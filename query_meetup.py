@@ -46,12 +46,9 @@ class MSMeetup(object):
         self.api_key = cfg['meetup']['api_key']
         self.search_keys = cfg['meetup']['search_keys']
         self.name_filter = cfg['meetup']['name_filter']
-        self.member_filter = cfg['meetup']['member_filter']
-        self.event_filter = cfg['meetup']['event_filter']
-        self.freq_filter = cfg['meetup']['freq_filter']
-        self.min_members = cfg['meetup']['min_members']
-        self.min_events = cfg['meetup']['min_events']
-        self.min_freq = cfg['meetup']['min_freq']
+        self.member_filter = (cfg['meetup']['member_filter'], cfg['meetup']['min_members'])
+        self.event_filter = (cfg['meetup']['event_filter'], cfg['meetup']['min_events'])
+        self.freq_filter = (cfg['meetup']['freq_filter'], cfg['meetup']['min_freq'])
         self.locations = {}
         # Horrible nested for loop which I can't quite work out how to fix
         for country in cfg['locations']:
@@ -84,11 +81,11 @@ class MSMeetup(object):
             sys.exit(1)
         if self.name_filter:
             group_info = self.filter_on_name(group_info)
-        if self.member_filter:
+        if self.member_filter[0]:
             group_info = self.filter_on_members(group_info)
-        if self.event_filter:
+        if self.event_filter[0]:
             group_info = self.filter_on_events(group_info)
-        if self.freq_filter:
+        if self.freq_filter[0]:
             group_info = self.filter_on_freq(group_info)
         return group_info
 
@@ -114,7 +111,7 @@ class MSMeetup(object):
         """
         Return a filtered set based on number of members
         """
-        mem_filter = [group for group in groups if group.members > self.min_members]
+        mem_filter = [group for group in groups if group.members > self.member_filter[1]]
         return mem_filter
 
     def filter_on_events(self, groups):
@@ -122,7 +119,7 @@ class MSMeetup(object):
         Return a filtered set based on minimum number of events
         """
         num_event_filter = [group for group in groups
-                            if len(self.get_past_events(group)) > self.min_events]
+                            if len(self.get_past_events(group)) > self.event_filter[1]]
         return num_event_filter
 
     def filter_on_freq(self, groups):
@@ -130,14 +127,14 @@ class MSMeetup(object):
         Return a filtered set based on a configurable past event frequency
         """
         event_freq_filter = [group for group in groups
-                             if event_frequency(self.get_past_events(group)) < self.min_freq]
+                             if event_frequency(self.get_past_events(group)) < self.freq_filter[1]]
         return event_freq_filter
 
 def main():
     """
     Main execution
     """
-    configfile = 'meetup.conf'
+    configfile = 'config.yml'
     meetup_query = MSMeetup(configfile)
     table = PrettyTable(['Name', 'Members', 'City', 'Country', 'URL'])
     for city, country in meetup_query.locations.iteritems():
