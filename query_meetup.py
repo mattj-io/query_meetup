@@ -3,9 +3,9 @@
 Query meetup.com API
 """
 
-import meetup.api
 import sys
 import time
+import meetup.api
 import yaml
 from prettytable import PrettyTable
 
@@ -15,7 +15,7 @@ def event_frequency(events):
     """
     time_between = []
     # Meetup returns time in millisecond precision
-    for i in range(0,len(events)-1,1):
+    for i in range(0, len(events)-1, 1):
         # Get the difference between the next entry and convert to days
         diff = (events[i+1]['time'] - events[i]['time'])/86400000
         time_between.append(diff)
@@ -27,17 +27,19 @@ def number_in_period(events, period):
     Given a set of events calculate the number of events within a period
     Not wildly accurate given seconds in month varies
     """
-    x=0
+    count = 0
     # Assume period is in months, so convert to seconds
     time_start = time.time() - (period*2592000)
-    for i in range(0,len(events),1):
+    for i in range(0, len(events), 1):
         # Meetup time in milliseconds so convert to seconds
         if events[i]['time']/1000 > time_start:
-            x += 1
-    return x
+            count += 1
+    return count
 
 class MSMeetup(object):
-
+    """
+    Define class object
+    """
     def __init__(self, configfile):
         with open("config.yml", 'r') as ymlfile:
             cfg = yaml.load(ymlfile)
@@ -74,7 +76,9 @@ class MSMeetup(object):
         con = self.connect_to_meetup()
         try:
             search_string = ' OR '.join(self.search_keys)
-            group_info = con.GetFindGroups({'text':search_string, 'country':country, 'location':city})
+            group_info = con.GetFindGroups({'text':search_string,
+                                            'country':country,
+                                            'location':city})
         except:
             print 'Could not search for groups'
             sys.exit(1)
@@ -93,49 +97,54 @@ class MSMeetup(object):
         Get past events for a group
         """
         con = self.connect_to_meetup()
-        res = con.GetEvents({'group_id': group.id, 'group_urlname': group.urlname, 'status': 'past'})
+        res = con.GetEvents({'group_id': group.id,
+                             'group_urlname': group.urlname,
+                             'status': 'past'})
         return res.results
 
     def filter_on_name(self, groups):
         """
         Return a filtered set based on name matching
         """
-        name_matches = [group for group in groups if any(key.lower() in group.name.lower() for key in self.search_keys)]
+        name_matches = [group for group in groups
+                        if any(key.lower() in group.name.lower() for key in self.search_keys)]
         return name_matches
 
     def filter_on_members(self, groups):
         """
         Return a filtered set based on number of members
         """
-        mem_filter = [group for group in groups if group.members > self.min_members ]
+        mem_filter = [group for group in groups if group.members > self.min_members]
         return mem_filter
 
     def filter_on_events(self, groups):
         """
         Return a filtered set based on minimum number of events
         """
-        num_event_filter = [group for group in groups if len(self.get_past_events(group)) > self.min_events]
+        num_event_filter = [group for group in groups
+                            if len(self.get_past_events(group)) > self.min_events]
         return num_event_filter
 
     def filter_on_freq(self, groups):
         """
         Return a filtered set based on a configurable past event frequency
         """
-        event_freq_filter = [ group for group in groups if event_frequency(self.get_past_events(group)) < self.min_freq]
+        event_freq_filter = [group for group in groups
+                             if event_frequency(self.get_past_events(group)) < self.min_freq]
         return event_freq_filter
 
 def main():
     """
     Main execution
     """
-    configfile = 'meetup.conf'    
-    mc = MSMeetup(configfile)
-    t = PrettyTable(['Name', 'Members', 'City', 'Country', 'URL'])
-    for city, country in mc.locations.iteritems():
-        res = mc.search_via_api(city, country)
+    configfile = 'meetup.conf'
+    meetup_query = MSMeetup(configfile)
+    table = PrettyTable(['Name', 'Members', 'City', 'Country', 'URL'])
+    for city, country in meetup_query.locations.iteritems():
+        res = meetup_query.search_via_api(city, country)
         for group in res:
-            t.add_row([group.name, group.members, city, country, group.link])
-    print t
+            table.add_row([group.name, group.members, city, country, group.link])
+    print table
 
 if __name__ == "__main__":
     main()
