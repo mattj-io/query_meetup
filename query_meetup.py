@@ -41,7 +41,7 @@ class MSMeetup(object):
     Define class object
     """
     def __init__(self, configfile):
-        with open("config.yml", 'r') as ymlfile:
+        with open(configfile, 'r') as ymlfile:
             cfg = yaml.load(ymlfile)
         self.api_key = cfg['meetup']['api_key']
         self.search_keys = cfg['meetup']['search_keys']
