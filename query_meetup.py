@@ -2,6 +2,7 @@
 """
 Query meetup.com API
 """
+
 import sys
 import time
 import meetup.api
@@ -90,6 +91,18 @@ class MSMeetup(object):
             group_info = self.filter_on_freq(group_info)
         return group_info
 
+    def get_member(self, id):
+        """
+        Retrieve a members details
+        """
+        con = self.connect_to_meetup()
+        try:
+            res = con.GetMember(id)
+        except:
+            print "Could not get member"
+            sys.exit(1)
+        return res
+
     def get_past_events(self, group):
         """
         Get past events for a group
@@ -151,13 +164,19 @@ def main():
     """
     Main execution
     """
-    configfile = 'config.yml'
+    configfile = 'config.mj'
     meetup_query = MSMeetup(configfile)
-    table = PrettyTable(['Name', 'Members', 'City', 'Country', 'URL'])
+    table = PrettyTable(['Name', 'Members', 'City', 'Country', 'URL', 'Organizer Name', 'Organizer URL'])
     for city, country in meetup_query.locations.iteritems():
         res = meetup_query.search_via_api(city, country)
         for group in res:
-            table.add_row([group.name, group.members, city, country, group.link])
+            table.add_row([group.name, 
+                           group.members, 
+                           city,
+                           country, 
+                           group.link, 
+                           group.organizer['name'],
+                           group.link+"members/"+str(group.organizer['id'])])
     print table
 
 if __name__ == "__main__":
