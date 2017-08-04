@@ -1,9 +1,12 @@
 meetup:
-    api_key: 3425161f35704018433cb3a5f17a75
+    api_key: yourmeetupapikey
     name_filter: True
     member_filter: True
     event_filter: True
     freq_filter: False
+    period_filter: False
+    period: 12
+    period_min: 3
     min_members: 300
     min_events: 4
     min_freq: 60

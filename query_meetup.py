@@ -11,7 +11,7 @@ from prettytable import PrettyTable
 
 def event_frequency(events):
     """
-    Given a set of events calculate the average frequency of events in days
+    Given a set of Meetup events calculate the average frequency of events in days
     """
     time_between = []
     # Meetup returns time in millisecond precision
@@ -24,7 +24,7 @@ def event_frequency(events):
 
 def number_in_period(events, period):
     """
-    Given a set of events calculate the number of events within a period
+    Given a set of Meetup events calculate the number of events within a period
     Not wildly accurate given seconds in month varies
     """
     count = 0
@@ -49,6 +49,7 @@ class MSMeetup(object):
         self.member_filter = (cfg['meetup']['member_filter'], cfg['meetup']['min_members'])
         self.event_filter = (cfg['meetup']['event_filter'], cfg['meetup']['min_events'])
         self.freq_filter = (cfg['meetup']['freq_filter'], cfg['meetup']['min_freq'])
+        self.period_filter = (cfg['meetup']['period_filter'], cfg['meetup']['period'], cfg['meetup']['period_min'])
         self.locations = {}
         # Horrible nested for loop which I can't quite work out how to fix
         for country in cfg['locations']:
@@ -101,7 +102,8 @@ class MSMeetup(object):
 
     def filter_on_name(self, groups):
         """
-        Return a filtered set based on name matching
+        Return a filtered set if groups based on name matching
+        Meetup API search scope is full description so this adds specifity
         """
         name_matches = [group for group in groups
                         if any(key.lower() in group.name.lower() for key in self.search_keys)]
@@ -109,18 +111,26 @@ class MSMeetup(object):
 
     def filter_on_members(self, groups):
         """
-        Return a filtered set based on number of members
+        Return a filtered set of groups based on number of members
         """
         mem_filter = [group for group in groups if group.members > self.member_filter[1]]
         return mem_filter
 
     def filter_on_events(self, groups):
         """
-        Return a filtered set based on minimum number of events
+        Return a filtered set of groups based on minimum number of events
         """
         num_event_filter = [group for group in groups
                             if len(self.get_past_events(group)) > self.event_filter[1]]
         return num_event_filter
+
+    def filter_on_period(self, period):
+        """
+        Return a filtered set of groups based on events in past configurable period
+        """
+        period_event_filter = [group for group in groups
+                              if number_in_period(group, self.period[1]) > self.period[2]]
+        return period_event_filter
 
     def filter_on_freq(self, groups):
         """
