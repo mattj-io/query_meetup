@@ -64,19 +64,31 @@ output:
 ```                
 
 api_key - a valid API key for Meetup.com
+
 name_filter - apply the defined search keys as a second pass against the actual name of a set of groups. Meetup.com's search API does full text search of body descriptions as well, so returns a lot of results. This gives a further element of specifity. Boolean.
+
 member_filter - use the number of members filter. Boolean.
+
 min_members - the minimum number of members the member filter will look for.
+
 event_filter - use the number of events filter. Boolean.
+
 min_events - the minimum number of events a returned group should have. This looks for past events over the entire life of the group.
+
 freq_filter - use the frequency of events filter. Boolean
+
 min_freq - the minimum frequency of events, counted as average days between events.
+
 period_filter - use the period filter. Boolean.
+
 period - period of time for the period filter in months. This is back from current date.
+
 min_period - the minimum number of events that should have occurred within the defined period.
 
 search_keys - list of search keys to use to search for groups. These are currently concatenated with OR for the purposes of the query.
+
 locations - the locations to query. 
+
 output - output format. Currently only table supported.
 
 TODO implement file or spreadsheet output, implement CLI arguments as well as config file, freeze to binary, improve docs, improve ( add ) error checking 
