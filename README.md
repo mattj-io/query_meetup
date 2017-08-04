@@ -1,8 +1,8 @@
-#Query tool for Meetup.com
+# Query tool for Meetup.com
 
 This uses the Meetup python bindings to query Meetup.com on multiple search terms and using multiple filters on the results
 
-##Requirements:
+## Requirements:
 
 Currently has the following dependencies, all available via pip
 
@@ -14,7 +14,7 @@ pyyaml
 
 You will also need an API key for Meetup.com, which you can find from the API link at the bottom of your Profile page
 
-###Configuration
+### Configuration
 
 Takes a yaml config file, currently hardcoded as config.yaml in the same directory as the running script
 
