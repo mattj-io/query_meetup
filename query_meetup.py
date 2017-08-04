@@ -2,7 +2,6 @@
 """
 Query meetup.com API
 """
-
 import sys
 import time
 import meetup.api
@@ -51,7 +50,7 @@ class MSMeetup(object):
         self.freq_filter = (cfg['meetup']['freq_filter'], cfg['meetup']['min_freq'])
         self.period_filter = (cfg['meetup']['period_filter'], cfg['meetup']['period'], cfg['meetup']['period_min'])
         self.locations = {}
-        # Horrible nested for loop which I can't quite work out how to fix
+        # Horrible nested for loop to load dict of city, country
         for country in cfg['locations']:
             for location in cfg['locations'][country]:
                 self.locations[location] = country
@@ -78,6 +77,7 @@ class MSMeetup(object):
                                             'country':country,
                                             'location':city})
         except:
+            #FIXME exception handling
             print 'Could not search for groups'
             sys.exit(1)
         if self.name_filter:
@@ -94,26 +94,33 @@ class MSMeetup(object):
         """
         Get past events for a group
         """
+        # FIXME exception handling
         con = self.connect_to_meetup()
-        res = con.GetEvents({'group_id': group.id,
-                             'group_urlname': group.urlname,
-                             'status': 'past'})
+        try:
+            res = con.GetEvents({'group_id': group.id,
+                                 'group_urlname': group.urlname,
+                                 'status': 'past'})
+        except:
+            print "Could not get events"
+            sys.exit(1)
         return res.results
 
     def filter_on_name(self, groups):
         """
-        Return a filtered set if groups based on name matching
-        Meetup API search scope is full description so this adds specifity
+        Return a filtered set of groups based on name matching
+        Meetup API search scope is full description not just name
         """
         name_matches = [group for group in groups
-                        if any(key.lower() in group.name.lower() for key in self.search_keys)]
+                        if any(key.lower() in group.name.lower()
+                        for key in self.search_keys)]
         return name_matches
 
     def filter_on_members(self, groups):
         """
         Return a filtered set of groups based on number of members
         """
-        mem_filter = [group for group in groups if group.members > self.member_filter[1]]
+        mem_filter = [group for group in groups 
+                      if group.members > self.member_filter[1]]
         return mem_filter
 
     def filter_on_events(self, groups):
