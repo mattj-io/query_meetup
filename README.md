@@ -61,6 +61,7 @@ locations:
         - Berlin
 output:
          - table
+         - xlsx
 ```                
 
 api_key - a valid API key for Meetup.com
@@ -89,6 +90,6 @@ search_keys - list of search keys to use to search for groups. These are current
 
 locations - the locations to query. 
 
-output - output format. Currently only table supported.
+output - output format. Spreadsheet and console table are supported
 
-TODO implement file or spreadsheet output, implement CLI arguments as well as config file, freeze to binary, improve docs, improve ( add ) error checking 
+TODO freeze to binary, improve docs, improve ( add ) error checking 
