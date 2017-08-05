@@ -7,6 +7,7 @@ import sys
 import time
 import meetup.api
 import yaml
+import xlsxwriter
 from prettytable import PrettyTable
 
 def event_frequency(events):
@@ -51,6 +52,9 @@ class MSMeetup(object):
         self.freq_filter = (cfg['meetup']['freq_filter'], cfg['meetup']['min_freq'])
         self.period_filter = (cfg['meetup']['period_filter'], cfg['meetup']['period'], cfg['meetup']['period_min'])
         self.locations = {}
+        self.outputs = []
+        for output in cfg['output']:
+            self.outputs.append(output) 
         # Horrible nested for loop to load dict of city, country
         for country in cfg['locations']:
             for location in cfg['locations'][country]:
@@ -160,24 +164,56 @@ class MSMeetup(object):
                              if event_frequency(self.get_past_events(group)) < self.freq_filter[1]]
         return event_freq_filter
 
+def create_spreadsheet(columns, groups):
+    """
+    Create a spreadsheet from a set of groups and column headers
+    """
+    workbook = xlsxwriter.Workbook('meetup_query.xlsx')
+    worksheet = workbook.add_worksheet()
+    col = 0
+    for item in columns:
+        worksheet.write(0, col, item)
+        col += 1
+    row = 1
+    for group in groups:
+        organizer_url = group.link+"members/"+str(group.organizer['id'])
+    	data = [group.name, group.members, group.city, group.country, group.link, group.organizer['name'], organizer_url]
+        col = 0
+        for item in data:
+            worksheet.write(row, col, item)
+            col += 1
+        row += 1
+    workbook.close()
+
+def create_table(columns, groups):
+    """
+    Output a table from a set of groups and column headers
+    """
+    table = PrettyTable(columns)
+    for group in groups:
+        organizer_url = group.link+"members/"+str(group.organizer['id'])
+        data = [group.name, group.members, group.city, group.country, group.link, group.organizer['name'], organizer_url]
+        table.add_row(data)
+    return table
+
+
 def main():
     """
     Main execution
     """
     configfile = 'config.mj'
     meetup_query = MSMeetup(configfile)
-    table = PrettyTable(['Name', 'Members', 'City', 'Country', 'URL', 'Organizer Name', 'Organizer URL'])
+    columns = ['Name', 'Members', 'City', 'Country', 'URL', 'Organizer Name', 'Organizer URL']
+    
+    res = []
     for city, country in meetup_query.locations.iteritems():
-        res = meetup_query.search_via_api(city, country)
-        for group in res:
-            table.add_row([group.name, 
-                           group.members, 
-                           city,
-                           country, 
-                           group.link, 
-                           group.organizer['name'],
-                           group.link+"members/"+str(group.organizer['id'])])
-    print table
+        res += meetup_query.search_via_api(city, country)
+
+    if 'xlsx' in meetup_query.outputs:
+        create_spreadsheet(columns, res)
+    if 'table' in meetup_query.outputs:
+        table = create_table(columns, res)
+        print table
 
 if __name__ == "__main__":
     main()
