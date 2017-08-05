@@ -60,8 +60,10 @@ locations:
         - Hamburg
         - Berlin
 output:
+    types:
          - table
          - xlsx
+    sheet_name: test.xlsx
 ```                
 
 api_key - a valid API key for Meetup.com
@@ -90,6 +92,11 @@ search_keys - list of search keys to use to search for groups. These are current
 
 locations - the locations to query. 
 
-output - output format. Spreadsheet and console table are supported
+output
 
-TODO implement multiple sheets for spreadsheet output, freeze to binary, improve docs, improve ( add ) error checking 
+types  - output format. Spreadsheet and console table are supported
+
+sheet_name - name of spreadsheet to create, this can be a full path
+
+Spreadsheet output will create xlsx format, with a worksheet per country defined in your locations. Spreadsheet name can be defined in the config file as above. 
+TODO freeze to binary, improve docs, improve ( add ) error checking 
