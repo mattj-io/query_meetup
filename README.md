@@ -92,4 +92,4 @@ locations - the locations to query.
 
 output - output format. Spreadsheet and console table are supported
 
-TODO freeze to binary, improve docs, improve ( add ) error checking 
+TODO implement multiple sheets for spreadsheet output, freeze to binary, improve docs, improve ( add ) error checking 
