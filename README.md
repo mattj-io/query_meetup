@@ -26,7 +26,7 @@ query_meetup.py --config matt_test.yml
 
 ```
 meetup:
-    api_key: 3425161f35704018433cb3a5f17a75
+    api_key: yourmeetupapikey
     name_filter: True
     member_filter: True
     event_filter: True
