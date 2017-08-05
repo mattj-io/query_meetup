@@ -38,17 +38,15 @@ def number_in_period(events, period):
             count += 1
     return count
 
-def create_spreadsheet(columns, groups):
+def create_spreadsheet(name, columns, groups):
     """
     Create a spreadsheet from a set of groups and column headers
     """
-    workbook = xlsxwriter.Workbook('meetup_query.xlsx')
-    worksheet = workbook.add_worksheet()
-    col = 0
-    for item in columns:
-        worksheet.write(0, col, item)
-        col += 1
-    row = 1
+    if not name.endswith('.xlxs'):
+        name = name+".xlsx"
+    workbook = xlsxwriter.Workbook(name)
+    row_count = {}
+    col_widths = {}
     for group in groups:
         organizer_url = group.link+"members/"+str(group.organizer['id'])
         data = [group.name,
@@ -58,16 +56,43 @@ def create_spreadsheet(columns, groups):
                 group.link,
                 group.organizer['name'],
                 organizer_url]
+        current_sheet = workbook.get_worksheet_by_name(group.country)
+        if not current_sheet:
+            current_sheet = workbook.add_worksheet(group.country)
+            # Set the values for initial column widths from the column headings length
+            col_widths[group.country] = add_columns(workbook, current_sheet, columns)
+            row_count[group.country] = 0
         col = 0
         for item in data:
-            worksheet.write(row, col, item)
+            # Update the column widths dictionary as we iterate through
+            if len(str(item)) > col_widths[group.country][col]:
+                col_widths[group.country][col] = len(str(item))
+            current_sheet.write(row_count[group.country] + 1, col, item)
             col += 1
-        row += 1
+        row_count[group.country] += 1
+    # Set column widths to display properly
+    for sheet, values in col_widths.iteritems():
+        current_sheet = workbook.get_worksheet_by_name(sheet)
+        for col, value in values.iteritems():
+            current_sheet.set_column(col, col, value + 1)
     workbook.close()
+
+def add_columns(workbook, worksheet, columns):
+    """
+    Add columns to a worksheet
+    """
+    bold = workbook.add_format({'bold': True})
+    col = 0
+    col_widths = {}
+    for item in columns:
+        worksheet.write(0, col, item, bold)
+        col_widths[col] = len(str(item))
+        col += 1
+    return col_widths
 
 def create_table(columns, groups):
     """
-    Output a table from a set of groups and column headers
+    Create a table from a set of groups and column headers
     """
     table = PrettyTable(columns)
     for group in groups:
@@ -84,7 +109,7 @@ def create_table(columns, groups):
 
 class MSMeetup(object):
     """
-    Define class object
+    Define class object and load config
     """
     def __init__(self, configfile):
         with open(configfile, 'r') as ymlfile:
@@ -102,10 +127,12 @@ class MSMeetup(object):
         self.filters['period_filter'] = [cfg['meetup']['period_filter'],
                                          cfg['meetup']['period'],
                                          cfg['meetup']['period_min']]
-        self.locations = {}
         self.outputs = []
-        for output in cfg['output']:
+        for output in cfg['output']['types']:
             self.outputs.append(output)
+        if 'xlsx' in self.outputs:
+            self.sheet_name = cfg['output']['sheet_name']
+        self.locations = {}
         # Horrible nested for loop to load dict of city, country
         for country in cfg['locations']:
             for location in cfg['locations'][country]:
@@ -233,7 +260,7 @@ def main():
         res += meetup_query.search_via_api(city, country)
 
     if 'xlsx' in meetup_query.outputs:
-        create_spreadsheet(columns, res)
+        create_spreadsheet(meetup_query.sheet_name, columns, res)
     if 'table' in meetup_query.outputs:
         table = create_table(columns, res)
         print table

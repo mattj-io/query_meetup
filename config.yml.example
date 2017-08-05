@@ -1,0 +1,45 @@
+meetup:
+    api_key: yourmeetupapikey
+    name_filter: True
+    member_filter: True
+    event_filter: True
+    freq_filter: False
+    period_filter: False
+    period: 12
+    period_min: 3
+    min_members: 300
+    min_events: 4
+    min_freq: 60
+    search_keys:
+        - openstack
+        - mesos
+        - docker
+        - data science
+        - kubernetes
+        - flink
+        - spark
+        - microservices
+        - cloud native
+        - big data
+        - cassandra
+        - kafka
+        - scala
+        - hadoop
+        - coreos
+        - software circus
+        - data engineering
+        - devops
+locations:
+    UK:
+        - Manchester
+        - Bristol
+        - London
+        - Birmingham
+    DE:
+        - Hamburg
+        - Berlin
+output:
+    types:
+         - table
+         - xlsx
+    sheet_name: meetup_mj
