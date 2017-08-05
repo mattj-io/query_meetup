@@ -16,7 +16,13 @@ You will also need an API key for Meetup.com, which you can find from the API li
 
 ### Configuration
 
-Takes a yaml config file, currently hardcoded as config.yaml in the same directory as the running script
+The script takes a single argument --config which requires a path to your yaml config file as described below. An example YAML file is included
+
+```
+query_meetup.py --config matt_test.yml
+```
+
+### Config file syntax
 
 ```
 meetup:
