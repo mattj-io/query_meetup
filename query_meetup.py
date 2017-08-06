@@ -42,6 +42,7 @@ def create_spreadsheet(name, columns, groups):
     """
     Create a spreadsheet from a set of groups and column headers
     """
+    # sanitise name from config
     if not name.endswith('.xlxs'):
         name = name+".xlsx"
     workbook = xlsxwriter.Workbook(name)
@@ -65,10 +66,12 @@ def create_spreadsheet(name, columns, groups):
         col = 0
         for item in data:
             # Update the column widths dictionary as we iterate through
+            # Set it to widest item
             if len(str(item)) > col_widths[group.country][col]:
                 col_widths[group.country][col] = len(str(item))
             current_sheet.write(row_count[group.country] + 1, col, item)
             col += 1
+        # store the current row per sheet in case data is out of order
         row_count[group.country] += 1
     # Set column widths to display properly
     for sheet, values in col_widths.iteritems():
@@ -248,6 +251,7 @@ def main():
     """
     Main execution
     """
+
     parser = argparse.ArgumentParser(description='Query Meetup.com')
     parser.add_argument('--config', action="store", dest="config", help='configuration file to use')
     args = parser.parse_args()
