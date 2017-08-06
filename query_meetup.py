@@ -4,6 +4,7 @@ Query meetup.com API
 """
 
 import sys
+import os
 import time
 import argparse
 import meetup.api
@@ -116,7 +117,19 @@ class MSMeetup(object):
     """
     def __init__(self, configfile):
         with open(configfile, 'r') as ymlfile:
-            cfg = yaml.load(ymlfile)
+            try:
+                cfg = yaml.safe_load(ymlfile)
+            except yaml.YAMLError as exc:
+                print "Error parsing configuration file"
+                if hasattr(exc, 'problem_mark'):
+                    mark = exc.problem_mark # pylint: disable=no-member
+                    print "Config file does not seem to be correct YAML - \
+                            error at line %s, column %s" \
+                            % (mark.line, mark.column)
+                sys.exit(1)
+        if "meetup" not in cfg:
+            print "Invalid configuration file"
+            sys.exit(1)
         self.api_key = cfg['meetup']['api_key']
         self.search_keys = cfg['meetup']['search_keys']
         self.filters = {}
@@ -253,8 +266,16 @@ def main():
     """
 
     parser = argparse.ArgumentParser(description='Query Meetup.com')
-    parser.add_argument('--config', action="store", dest="config", help='configuration file to use')
+    parser.add_argument('--config',
+                        action="store",
+                        dest="config",
+                        help='configuration file to use',
+                        required=True)
     args = parser.parse_args()
+
+    if not os.path.isfile(args.config):
+        print "Could not find config file %s" % args.config
+        sys.exit(1)
 
     meetup_query = MSMeetup(args.config)
     columns = ['Name', 'Members', 'City', 'Country', 'URL', 'Organizer Name', 'Organizer URL']
