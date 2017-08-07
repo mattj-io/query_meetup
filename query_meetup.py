@@ -7,6 +7,7 @@ import sys
 import os
 import time
 import argparse
+import random
 from collections import OrderedDict
 import meetup.api
 import yaml
@@ -61,11 +62,15 @@ def create_spreadsheet(name, columns, groups):
             row_count[group.country] = 0
         col = 0
         for item in columns.values():
-            attr = getattr(group, item)
+            attr = getattr(group, str(item))
             # Update the column widths dictionary as we iterate through
             # Set it to widest item
-            if len(str(attr)) > col_widths[group.country][col]:
-                col_widths[group.country][col] = len(str(attr))
+            if isinstance(attr, int):
+                length = len(str(attr))
+            else:
+                length = len(attr)
+            if length > col_widths[group.country][col]:
+                col_widths[group.country][col] = length
             current_sheet.write(row_count[group.country] + 1, col, attr)
             col += 1
         # store the current row per sheet in case data is out of order
@@ -168,6 +173,8 @@ class MSMeetup(object):
             group_info = con.GetFindGroups({'text':search_string, # pylint: disable=no-member
                                             'country':country,
                                             'location':city})
+        except meetup.exceptions.HttpServerError:
+            return None
         except meetup.exceptions.MeetupBaseException as err:
             print 'Could not search for groups: %s' % err
             sys.exit(1)
@@ -279,7 +286,22 @@ def main():
 
     res = []
     for city, country in meetup_query.locations.iteritems():
-        res += meetup_query.search_via_api(city, country)
+        # Retry loop to handle API returning junk
+        count = 0
+        for count in range(0, 3):
+            print "City %s country %s" % (city, country)
+            res += meetup_query.search_via_api(city, country)
+            if not res:
+                # API returned junk, wait and try again
+                print "API returned junk - retrying"
+                time.sleep(random.randint(5, 20))
+                count += 1
+                continue
+            else:
+                break
+        else:
+            print "Could not get result from API"
+            sys.exit(1)
 
     if meetup_query.filters['name_filter'][0]:
         res = meetup_query.filter_on_name(res)
