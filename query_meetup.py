@@ -7,6 +7,7 @@ import sys
 import os
 import time
 import argparse
+from collections import OrderedDict
 import meetup.api
 import yaml
 import xlsxwriter
@@ -50,27 +51,22 @@ def create_spreadsheet(name, columns, groups):
     row_count = {}
     col_widths = {}
     for group in groups:
-        organizer_url = group.link+"members/"+str(group.organizer['id'])
-        data = [group.name,
-                group.members,
-                group.city,
-                group.country,
-                group.link,
-                group.organizer['name'],
-                organizer_url]
+        group.organizer_url = group.link+"members/"+str(group.organizer['id'])
+        group.organizer_name = group.organizer['name']
         current_sheet = workbook.get_worksheet_by_name(group.country)
         if not current_sheet:
             current_sheet = workbook.add_worksheet(group.country)
             # Set the values for initial column widths from the column headings length
-            col_widths[group.country] = add_columns(workbook, current_sheet, columns)
+            col_widths[group.country] = add_columns(workbook, current_sheet, columns.keys())
             row_count[group.country] = 0
         col = 0
-        for item in data:
+        for item in columns.values():
+            attr = getattr(group, item)
             # Update the column widths dictionary as we iterate through
             # Set it to widest item
-            if len(str(item)) > col_widths[group.country][col]:
-                col_widths[group.country][col] = len(str(item))
-            current_sheet.write(row_count[group.country] + 1, col, item)
+            if len(str(attr)) > col_widths[group.country][col]:
+                col_widths[group.country][col] = len(str(attr))
+            current_sheet.write(row_count[group.country] + 1, col, attr)
             col += 1
         # store the current row per sheet in case data is out of order
         row_count[group.country] += 1
@@ -98,17 +94,14 @@ def create_table(columns, groups):
     """
     Create a table from a set of groups and column headers
     """
-    table = PrettyTable(columns)
+    table = PrettyTable(columns.keys())
     for group in groups:
-        organizer_url = group.link+"members/"+str(group.organizer['id'])
-        data = [group.name,
-                group.members,
-                group.city,
-                group.country,
-                group.link,
-                group.organizer['name'],
-                organizer_url]
-        table.add_row(data)
+        row = []
+        group.organizer_url = group.link+"members/"+str(group.organizer['id'])
+        group.organizer_name = group.organizer['name']
+        for item in columns.values():
+            row.append(getattr(group, item))
+        table.add_row(row)
     return table
 
 class MSMeetup(object):
@@ -178,16 +171,6 @@ class MSMeetup(object):
         except meetup.exceptions.MeetupBaseException as err:
             print 'Could not search for groups: %s' % err
             sys.exit(1)
-        if self.filters['name_filter'][0]:
-            group_info = self.filter_on_name(group_info)
-        if self.filters['member_filter'][0]:
-            group_info = self.filter_on_members(group_info)
-        if self.filters['event_filter'][0]:
-            group_info = self.filter_on_events(group_info)
-        if self.filters['freq_filter'][0]:
-            group_info = self.filter_on_freq(group_info)
-        if self.filters['period_filter'][0]:
-            group_info = self.filter_on_period(group_info)
         return group_info
 
     def get_member(self, member_id):
@@ -238,16 +221,22 @@ class MSMeetup(object):
         """
         Return a filtered set of groups based on minimum number of events
         """
+        for group in groups:
+            group.number_events = len(self.get_past_events(group))
         num_event_filter = [group for group in groups
-                            if len(self.get_past_events(group)) > self.filters['event_filter'][1]]
+                            if group.number_events > self.filters['event_filter'][1]]
         return num_event_filter
 
     def filter_on_period(self, groups):
         """
         Return a filtered set of groups based on events in past configurable period
         """
+        for group in groups:
+            group.number_in_period = number_in_period(self.get_past_events(group),
+                                                      self.filters['period_filter'][1])
+            group.period = self.filters['period_filter'][1]
         period_event_filter = [group for group in groups
-                               if number_in_period(group, self.filters['period_filter'][1])
+                               if group.number_in_period
                                > self.filters['period_filter'][2]]
         return period_event_filter
 
@@ -255,8 +244,10 @@ class MSMeetup(object):
         """
         Return a filtered set based on a configurable past event frequency
         """
+        for group in groups:
+            group.event_freq = event_frequency(self.get_past_events(group))
         event_freq_filter = [group for group in groups
-                             if event_frequency(self.get_past_events(group))
+                             if group.event_freq
                              < self.filters['freq_filter'][1]]
         return event_freq_filter
 
@@ -278,11 +269,32 @@ def main():
         sys.exit(1)
 
     meetup_query = MSMeetup(args.config)
-    columns = ['Name', 'Members', 'City', 'Country', 'URL', 'Organizer Name', 'Organizer URL']
+    columns = OrderedDict([('Name', 'name'),
+                           ('Members', 'members'),
+                           ('City', 'city'),
+                           ('Country', 'country'),
+                           ('URL', 'link'),
+                           ('Organizer Name', 'organizer_name'),
+                           ('Organizer URL', 'organizer_url')])
 
     res = []
     for city, country in meetup_query.locations.iteritems():
         res += meetup_query.search_via_api(city, country)
+
+    if meetup_query.filters['name_filter'][0]:
+        res = meetup_query.filter_on_name(res)
+    if meetup_query.filters['member_filter'][0]:
+        res = meetup_query.filter_on_members(res)
+    if meetup_query.filters['event_filter'][0]:
+        res = meetup_query.filter_on_events(res)
+        columns['Total Events'] = 'number_events'
+    if meetup_query.filters['freq_filter'][0]:
+        res = meetup_query.filter_on_freq(res)
+        columns['Frequency (days)'] = 'event_freq'
+    if meetup_query.filters['period_filter'][0]:
+        res = meetup_query.filter_on_period(res)
+        columns['Events in Period'] = 'number_in_period'
+        columns['Period (months)'] = 'period'
 
     if 'xlsx' in meetup_query.outputs:
         create_spreadsheet(meetup_query.sheet_name, columns, res)
