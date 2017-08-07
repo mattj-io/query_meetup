@@ -289,7 +289,7 @@ def main():
         # Retry loop to handle API returning junk
         count = 0
         for count in range(0, 3):
-            print "City %s country %s" % (city, country)
+            print "City: %s Country: %s" % (city, country)
             res += meetup_query.search_via_api(city, country)
             if not res:
                 # API returned junk, wait and try again
