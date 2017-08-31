@@ -4,13 +4,15 @@ This uses the Meetup python bindings to query Meetup.com on multiple search term
 
 ## Requirements:
 
-Currently has the following dependencies, all available via pip
+If you want to use the python script directly, it currently has the following dependencies, all available via pip
 
 ```
 meetup.api
 prettytable
 pyyaml
 ```
+
+Included in the repository are binaries for Mac and Linux, which don't require any dependencies.
 
 You will also need an API key for Meetup.com, which you can find from the API link at the bottom of your Profile page
 
@@ -20,6 +22,11 @@ The script takes a single argument --config which requires a path to your yaml c
 
 ```
 query_meetup.py --config matt_test.yml
+```
+If you're using the binaries :
+
+```
+query_meetup_mac --config matt_test.yml
 ```
 
 ### Config file syntax
