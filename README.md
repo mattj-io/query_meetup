@@ -112,4 +112,3 @@ types  - output format. Spreadsheet and console table are supported
 sheet_name - name of spreadsheet to create, this can be a full path
 
 Spreadsheet output will create xlsx format, with a worksheet per country defined in your locations. Spreadsheet name can be defined in the config file as above. 
-TODO freeze to binary, improve docs, improve ( add ) error checking 
