@@ -201,10 +201,14 @@ class MSMeetup(object):
             res = con.GetEvents({'group_id': group.id, # pylint: disable=no-member
                                  'group_urlname': group.urlname,
                                  'status': 'past'})
+            results = res.results
         except meetup.exceptions.MeetupBaseException as err:
             print "Could not get events %s" % err
             sys.exit(1)
-        return res.results
+        except ValueError as err:
+            print "JSON error - setting number of events to 0 %s " % err
+            results = {}
+        return results
 
     def filter_on_name(self, groups):
         """
