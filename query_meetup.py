@@ -129,6 +129,7 @@ class MSMeetup(object):
             print "Invalid configuration file"
             sys.exit(1)
         self.api_key = cfg['meetup']['api_key']
+        self.radius = cfg['meetup']['radius']
         self.search_keys = cfg['meetup']['search_keys']
         self.filters = {}
         self.filters['name_filter'] = [cfg['meetup']['name_filter']]
@@ -170,14 +171,17 @@ class MSMeetup(object):
         con = self.connect_to_meetup()
         try:
             search_string = ' OR '.join(self.search_keys)
+            print search_string
             group_info = con.GetFindGroups({'text':search_string, # pylint: disable=no-member
                                             'country':country,
-                                            'location':city})
+                                            'location':city,
+                                            'radius':self.radius})
         except meetup.exceptions.HttpServerError:
             return None
         except meetup.exceptions.MeetupBaseException as err:
             print 'Could not search for groups: %s' % err
             sys.exit(1)
+        print group_info
         return group_info
 
     def get_member(self, member_id):
