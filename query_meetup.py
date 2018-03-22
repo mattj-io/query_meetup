@@ -171,7 +171,6 @@ class MSMeetup(object):
         con = self.connect_to_meetup()
         try:
             search_string = ' OR '.join(self.search_keys)
-            print search_string
             group_info = con.GetFindGroups({'text':search_string, # pylint: disable=no-member
                                             'country':country,
                                             'location':city,
@@ -181,7 +180,6 @@ class MSMeetup(object):
         except meetup.exceptions.MeetupBaseException as err:
             print 'Could not search for groups: %s' % err
             sys.exit(1)
-        print group_info
         return group_info
 
     def get_member(self, member_id):
