@@ -1,5 +1,6 @@
 meetup:
     api_key: yourmeetupapikey
+    radius: 25
     name_filter: True
     member_filter: True
     event_filter: True
