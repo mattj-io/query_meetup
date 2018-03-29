@@ -12,7 +12,7 @@ prettytable
 pyyaml
 ```
 
-Included in the repository are binaries for Mac and Linux, which don't require any dependencies.
+Included in the repository is a Mac binary, built with pyinstaller which doesn't require any dependencies.
 
 You will also need an API key for Meetup.com, which you can find from the API link at the bottom of your Profile page
 
@@ -34,6 +34,7 @@ query_meetup_mac --config matt_test.yml
 ```
 meetup:
     api_key: yourmeetupapikey
+    radius: 5
     name_filter: True
     member_filter: True
     event_filter: True
@@ -80,6 +81,8 @@ output:
 ```                
 
 api_key - a valid API key for Meetup.com
+
+radius - radius around the search cities
 
 name_filter - apply the defined search keys as a second pass against the actual name of a set of groups. Meetup.com's search API does full text search of body descriptions as well, so returns a lot of results. This gives a further element of specifity. Boolean.
 
