@@ -48,9 +48,9 @@ meetup:
     member_filter: True
     event_filter: True
     freq_filter: False
-    period_filter:False
+    period_filter: False
     period: 12
-    min_period: 4
+    period_min: 4
     min_members: 300
     min_events: 4
     min_freq: 60
