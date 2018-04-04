@@ -10,7 +10,16 @@ If you want to use the python script directly, it currently has the following de
 meetup.api
 prettytable
 pyyaml
+xlsxwriter
 ```
+
+You can also add these dependancies by installing virtualenv:
+1. `pip install virtualenv`
+1. `mkdir py3`
+1. `virtualenv py3`
+1. `source py3/bin/activate`
+1. `cd query_meetup`
+1. `pip install -r requirements.txt`
 
 Included in the repository is a Mac binary, built with pyinstaller which doesn't require any dependencies.
 
@@ -106,7 +115,7 @@ min_period - the minimum number of events that should have occurred within the d
 
 search_keys - list of search keys to use to search for groups. These are currently concatenated with OR for the purposes of the query.
 
-locations - the locations to query. 
+locations - the locations to query.
 
 output
 
@@ -114,4 +123,4 @@ types  - output format. Spreadsheet and console table are supported
 
 sheet_name - name of spreadsheet to create, this can be a full path
 
-Spreadsheet output will create xlsx format, with a worksheet per country defined in your locations. Spreadsheet name can be defined in the config file as above. 
+Spreadsheet output will create xlsx format, with a worksheet per country defined in your locations. Spreadsheet name can be defined in the config file as above.
