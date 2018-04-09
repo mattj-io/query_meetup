@@ -15,9 +15,9 @@ xlsxwriter
 
 You can also add these dependancies by installing virtualenv:
 1. `pip install virtualenv`
-1. `mkdir py3.6`
-1. `virtualenv py3.6`
-1. `source py3.6/bin/activate`
+1. `mkdir venv`
+1. `virtualenv venv`
+1. `source venv/bin/activate`
 1. `cd query_meetup`
 1. `pip install -r requirements.txt`
 
