@@ -3,16 +3,31 @@
 Query meetup.com API
 """
 
+import requests
 import sys
 import os
 import time
 import argparse
 import random
 from collections import OrderedDict
-import meetup.api
 import yaml
 import xlsxwriter
 from prettytable import PrettyTable
+import json
+
+def de_dupe(groups):
+    """
+    De-duplicate a set of groups
+    """
+    deduped = [i for n, i in enumerate(groups) if i not in groups[n+1:]]
+    return deduped
+
+def exclude_by_country(groups, country):
+    """
+    Strip out groups with a different country
+    """
+    excluded = [ group for group in groups if group["country"] == country ]
+    return excluded
 
 def event_frequency(events):
     """
@@ -52,33 +67,32 @@ def create_spreadsheet(name, columns, groups):
     row_count = {}
     col_widths = {}
     for group in groups:
-        group.organizer_url = group.link+"members/"+str(group.organizer['id'])
-        group.organizer_name = group.organizer['name']
-        current_sheet = workbook.get_worksheet_by_name(group.country)
+        group['organizer_url'] = group['link']+"members/"+str(group['organizer']['id'])
+        group['organizer_name'] = group['organizer']['name']
+        current_sheet = workbook.get_worksheet_by_name(group['country'])
         if not current_sheet:
-            current_sheet = workbook.add_worksheet(group.country)
+            current_sheet = workbook.add_worksheet(group['country'])
             # Set the values for initial column widths from the column headings length
-            col_widths[group.country] = add_columns(workbook, current_sheet, columns.keys())
-            row_count[group.country] = 0
+            col_widths[group['country']] = add_columns(workbook, current_sheet, columns.keys())
+            row_count[group['country']] = 0
         col = 0
         for item in columns.values():
-            attr = getattr(group, str(item))
             # Update the column widths dictionary as we iterate through
             # Set it to widest item
-            if isinstance(attr, int):
-                length = len(str(attr))
+            if isinstance(group[item], int):
+                length = len(str(group[item]))
             else:
-                length = len(attr)
-            if length > col_widths[group.country][col]:
-                col_widths[group.country][col] = length
-            current_sheet.write(row_count[group.country] + 1, col, attr)
+                length = len(group[item])
+            if length > col_widths[group['country']][col]:
+                col_widths[group['country']][col] = length
+            current_sheet.write(row_count[group['country']] + 1, col, group[item])
             col += 1
         # store the current row per sheet in case data is out of order
-        row_count[group.country] += 1
+        row_count[group['country']] += 1
     # Set column widths to display properly
     for sheet, values in col_widths.iteritems():
         current_sheet = workbook.get_worksheet_by_name(sheet)
-        for col, value in values.iteritems():
+        for col, value in enumerate(values):
             current_sheet.set_column(col, col, value + 1)
     workbook.close()
 
@@ -88,10 +102,10 @@ def add_columns(workbook, worksheet, columns):
     """
     bold = workbook.add_format({'bold': True})
     col = 0
-    col_widths = {}
+    col_widths = []
     for item in columns:
         worksheet.write(0, col, item, bold)
-        col_widths[col] = len(str(item))
+        col_widths.append(len(str(item)))
         col += 1
     return col_widths
 
@@ -102,10 +116,10 @@ def create_table(columns, groups):
     table = PrettyTable(columns.keys())
     for group in groups:
         row = []
-        group.organizer_url = group.link+"members/"+str(group.organizer['id'])
-        group.organizer_name = group.organizer['name']
+        group['organizer_url'] = group['link']+"members/"+str(group['organizer']['id'])
+        group['organizer_name'] = group['organizer']['name']
         for item in columns.values():
-            row.append(getattr(group, item))
+            row.append(group[item])
         table.add_row(row)
     return table
 
@@ -128,8 +142,16 @@ class MSMeetup(object):
         if "meetup" not in cfg:
             print "Invalid configuration file"
             sys.exit(1)
-        self.api_key = cfg['meetup']['api_key']
-        self.radius = cfg['meetup']['radius']
+	self.client_id = cfg['meetup']['client_id']
+	self.auth_url = cfg['meetup']['auth_url']
+	self.client_secret = cfg['meetup']['client_secret']
+	self.access_url = cfg['meetup']['access_url']
+	self.email = cfg['meetup']['email']
+	self.password = cfg['meetup']['password']
+	self.oauth_url = cfg['meetup']['oauth_url']
+	self.base_api_url = cfg['meetup']['base_api_url']
+	self.api_rate_limit = cfg['meetup']['api_rate_limit']
+    	self.radius = cfg['meetup']['radius']
         self.search_keys = cfg['meetup']['search_keys']
         self.filters = {}
         self.filters['name_filter'] = [cfg['meetup']['name_filter']]
@@ -152,65 +174,78 @@ class MSMeetup(object):
         for country in cfg['locations']:
             for location in cfg['locations'][country]:
                 self.locations[location] = country
-
-    def connect_to_meetup(self):
+    
+    def get_oauth_token(self):
         """
-        Connect to Meetup API
+        Get an Oauth token
         """
+        grant_type = 'anonymous_code'
+        headers = {'Accept': 'application/json'}
+        redirect_uri='https://github.com/mattj-io/query_meetup'
+        auth_params = { 'client_id': self.client_id, 'response_type': grant_type, 'redirect_uri': redirect_uri }
+	print "Attempting to authenticate against Meetup.com"
         try:
-            client = meetup.api.Client(self.api_key)
-        except meetup.exceptions.ApiKeyError, err:
-            print 'Could not connect to Meetup.com', err
-            sys.exit(1)
-        return client
-
-    def search_via_api(self, city, country):
-        """
-        Do a search
-        """
-        con = self.connect_to_meetup()
+	    auth_response = requests.get(self.auth_url, params=auth_params, headers=headers)
+        except requests.exceptions.RequestException as e:
+            raise SystemExit(e)
+	auth_token = auth_response.json()["code"]
+        # Request access token
+        access_params = { 'client_id': self.client_id, 'client_secret': self.client_secret, 'grant_type': grant_type, 'redirect_uri': redirect_uri, 'code': auth_token }
         try:
-            search_string = ' OR '.join(self.search_keys)
-            group_info = con.GetFindGroups({'text':search_string, # pylint: disable=no-member
-                                            'country':country,
-                                            'location':city,
-                                            'radius':self.radius})
-        except meetup.exceptions.HttpServerError:
-            return None
-        except meetup.exceptions.MeetupBaseException as err:
-            print 'Could not search for groups: %s' % err
-            sys.exit(1)
-        return group_info
+	    access_response = requests.post(self.access_url, params=access_params, headers=headers)
+        except requests.exceptions.RequestException as e:
+            raise SystemExit(e)
+        access_token = access_response.json()["access_token"]
+        # Request oauth token
+        access_token_string = 'Bearer %s' % access_token
+        headers['Authorization'] = access_token_string
+        oauth_params = { 'email': self.email, 'password': self.password }
+        try:
+	    oauth_response = requests.post(self.oauth_url, params=oauth_params, headers=headers)
+        except requests.exceptions.RequestException as e:
+            raise SystemExit(e)
+	print "Successfully authenticated against Meetup.com"
+        auth_string = 'Bearer %s' % oauth_response.json()["oauth_token"]
+        oauth_headers = {'Accept': 'application/json', 'Authorization': auth_string}
+	return oauth_headers
 
-    def get_member(self, member_id):
+    def search_for_groups(self, city, country, oauth_headers):
+        """
+	Do a search
+	"""
+	api_url = self.base_api_url + "/find/groups"
+	search_string = ' OR '.join(self.search_keys)
+	params = { 'country': country, 'location': city, 'radius': self.radius, 'text': search_string }
+	try:
+	    res = requests.get(api_url, params=params, headers=oauth_headers)
+	except requests.exceptions.RequestException as e:
+            raise SystemExit(e)
+        # Meetup sometimes gets the wrong country so filter them here
+	excluded = exclude_by_country(res.json(), country)
+	return excluded
+
+    def get_member(self, member_id, oauth_headers):
         """
         Retrieve a members details
         """
-        con = self.connect_to_meetup()
+        api_url = self.base_api_url + "/members/member_id"
         try:
-            res = con.GetMember(member_id) # pylint: disable=no-member
-        except meetup.exceptions.MeetupBaseException as err:
-            print "Could not get member %s" % err
-            sys.exit(1)
-        return res
+            res = requests.get(api_url, headers=oauth_headers)
+	except requests.exceptions.RequestException as e:
+    	    raise SystemExit(e)
+        return res.json()
 
-    def get_past_events(self, group):
+    def get_past_events(self, group, oauth_headers):
         """
         Get past events for a group
         """
-        con = self.connect_to_meetup()
+	api_url = self.base_api_url + "/%s/events" % group["urlname"]
+	params = { 'status': 'past' }
         try:
-            res = con.GetEvents({'group_id': group.id, # pylint: disable=no-member
-                                 'group_urlname': group.urlname,
-                                 'status': 'past'})
-            results = res.results
-        except meetup.exceptions.MeetupBaseException as err:
-            print "Could not get events %s" % err
-            sys.exit(1)
-        except ValueError as err:
-            print "JSON error - setting number of events to 0 %s " % err
-            results = {}
-        return results
+	    res = requests.get(api_url, headers=oauth_headers, params=params)
+        except requests.exceptions.RequestException as e:
+            raise SystemExit(e)
+        return res.json()
 
     def filter_on_name(self, groups):
         """
@@ -218,7 +253,7 @@ class MSMeetup(object):
         Meetup API search scope is full description not just name
         """
         name_matches = [group for group in groups
-                        if any(key.lower() in group.name.lower()
+                        if any(key.lower() in group["name"].lower()
                                for key in self.search_keys)]
         return name_matches
 
@@ -227,40 +262,43 @@ class MSMeetup(object):
         Return a filtered set of groups based on number of members
         """
         mem_filter = [group for group in groups
-                      if group.members > self.filters['member_filter'][1]]
+                      if group["members"] > self.filters['member_filter'][1]]
         return mem_filter
 
-    def filter_on_events(self, groups):
+    def filter_on_events(self, groups, oauth_headers):
         """
         Return a filtered set of groups based on minimum number of events
         """
         for group in groups:
-            group.number_events = len(self.get_past_events(group))
+            group["number_events"] = len(self.get_past_events(group, oauth_headers))
+	    time.sleep(self.api_rate_limit)
         num_event_filter = [group for group in groups
-                            if group.number_events > self.filters['event_filter'][1]]
+                            if group["number_events"] > self.filters['event_filter'][1]]
         return num_event_filter
 
-    def filter_on_period(self, groups):
+    def filter_on_period(self, groups, oauth_headers):
         """
         Return a filtered set of groups based on events in past configurable period
         """
         for group in groups:
-            group.number_in_period = number_in_period(self.get_past_events(group),
+            group["number_in_period"] = number_in_period(self.get_past_events(group, oauth_headers),
                                                       self.filters['period_filter'][1])
-            group.period = self.filters['period_filter'][1]
+            group["period"] = self.filters['period_filter'][1]
+            time.sleep(self.api_rate_limit)
         period_event_filter = [group for group in groups
-                               if group.number_in_period
+                               if group["number_in_period"]
                                > self.filters['period_filter'][2]]
         return period_event_filter
 
-    def filter_on_freq(self, groups):
+    def filter_on_freq(self, groups, oauth_headers):
         """
         Return a filtered set based on a configurable past event frequency
         """
         for group in groups:
-            group.event_freq = event_frequency(self.get_past_events(group))
+            group["event_freq"] = event_frequency(self.get_past_events(group, oauth_headers))
+            time.sleep(self.api_rate_limit)
         event_freq_filter = [group for group in groups
-                             if group.event_freq
+                             if group["event_freq"]
                              < self.filters['freq_filter'][1]]
         return event_freq_filter
 
@@ -291,44 +329,48 @@ def main():
                            ('Organizer URL', 'organizer_url')])
 
     res = []
+	
+    # Get Oauth token
+    oauth_headers = meetup_query.get_oauth_token()
     for city, country in meetup_query.locations.iteritems():
         # Retry loop to handle API returning junk
         count = 0
         for count in range(0, 3):
-            print "City: %s Country: %s" % (city, country)
-            res += meetup_query.search_via_api(city, country)
+            print "Searching for groups in City: %s Country: %s" % (city, country)
+            res += meetup_query.search_for_groups(city, country, oauth_headers)
             if not res:
-                # API returned junk, wait and try again
-                print "API returned junk - retrying"
-                time.sleep(random.randint(5, 20))
-                count += 1
-                continue
+		print "No results for City: %s, Country: %s" % (city, country)
+		time.sleep(meetup_query.api_rate_limit)
+		break
             else:
+		time.sleep(meetup_query.api_rate_limit)
                 break
         else:
             print "Could not get result from API"
             sys.exit(1)
-
+    print "Applying filters"
     if meetup_query.filters['name_filter'][0]:
         res = meetup_query.filter_on_name(res)
     if meetup_query.filters['member_filter'][0]:
         res = meetup_query.filter_on_members(res)
     if meetup_query.filters['event_filter'][0]:
-        res = meetup_query.filter_on_events(res)
+        res = meetup_query.filter_on_events(res, oauth_headers)
         columns['Total Events'] = 'number_events'
     if meetup_query.filters['freq_filter'][0]:
-        res = meetup_query.filter_on_freq(res)
+        res = meetup_query.filter_on_freq(res, oauth_headers)
         columns['Frequency (days)'] = 'event_freq'
     if meetup_query.filters['period_filter'][0]:
-        res = meetup_query.filter_on_period(res)
+        res = meetup_query.filter_on_period(res, oauth_headers)
         columns['Events in Period'] = 'number_in_period'
         columns['Period (months)'] = 'period'
-
+    print "Deduplicating results"
+    deduped = de_dupe(res)
+    print "Creating output"
     if 'xlsx' in meetup_query.outputs:
-        create_spreadsheet(meetup_query.sheet_name, columns, res)
+        create_spreadsheet(meetup_query.sheet_name, columns, deduped)
     if 'table' in meetup_query.outputs:
-        table = create_table(columns, res)
-        print table
+       table = create_table(columns, deduped)
+       print table
 
 if __name__ == "__main__":
     main()

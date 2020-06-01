@@ -1,13 +1,13 @@
 # Query tool for Meetup.com
 
-This uses the Meetup python bindings to query Meetup.com on multiple search terms and using multiple filters on the results
+This tool queries the Meetup.com API on multiple search terms and using multiple filters on the results
 
 ## Requirements:
 
-If you want to use the python script directly, it currently has the following dependencies, all available via pip
+It currently has the following dependencies, all available via pip
 
 ```
-meetup.api
+requests
 prettytable
 pyyaml
 xlsxwriter
@@ -21,9 +21,7 @@ You can also add these dependancies by installing virtualenv:
 1. `cd query_meetup`
 1. `pip install -r requirements.txt`
 
-Included in the repository is a Mac binary, built with pyinstaller which doesn't require any dependencies.
-
-You will also need an API key for Meetup.com, which you can find from the API link at the bottom of your Profile page
+Meetup.com uses Oauth2 for authentication and authorization, in order to use this script you'll need to have set up an Oauth Consumer on your Meetup.com account. Once that is set up, you'll need to add the Key, Secret and Redirect URI into the configuration file, along with your Meetup.com email and password. The Redirect URI isn't actually used for anything, but is required as part of the Oauth process.
 
 ### Configuration
 
@@ -32,17 +30,20 @@ The script takes a single argument --config which requires a path to your yaml c
 ```
 query_meetup.py --config matt_test.yml
 ```
-If you're using the binaries :
-
-```
-query_meetup_mac --config matt_test.yml
-```
 
 ### Config file syntax
 
 ```
 meetup:
-    api_key: yourmeetupapikey
+    client_id: YOUR_MEETUP_CLIENT_ID
+    client_secret: YOUR_MEETUP_CLIENT_SECRET
+    email: YOUR_MEETUP_EMAIL
+    password: YOUR_MEETUP_PASSWORD
+    redirect_uri: YOUR_REDIRECT_URI
+    base_api_url: https://api.meetup.com
+    auth_url: https://secure.meetup.com/oauth2/authorize
+    access_url: https://secure.meetup.com/oauth2/access
+    oauth_url:  https://api.meetup.com/sessions
     radius: 5
     name_filter: True
     member_filter: True
@@ -89,7 +90,15 @@ output:
     sheet_name: test.xlsx
 ```                
 
-api_key - a valid API key for Meetup.com
+client_id - the key for your Oauth Consumer
+
+client_secret - the secret for your Oauth Consumer
+
+email - the email registered with Meetup.com account
+
+password - the password for your Meetup.com account
+
+redirect_uri - the Redirect URI that you registered for your Oauth Consumer
 
 radius - radius around the search cities
 
