@@ -1,4 +1,4 @@
-meetup.api
+requests
 prettytable
 pyyaml
 xlsxwriter
