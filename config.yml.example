@@ -8,6 +8,7 @@ meetup:
     auth_url: https://secure.meetup.com/oauth2/authorize
     access_url: https://secure.meetup.com/oauth2/access
     oauth_url:  https://api.meetup.com/sessions
+    api_rate_limit: 2
     radius: 25
     name_filter: True
     member_filter: True
