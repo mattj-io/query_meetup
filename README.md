@@ -44,6 +44,7 @@ meetup:
     auth_url: https://secure.meetup.com/oauth2/authorize
     access_url: https://secure.meetup.com/oauth2/access
     oauth_url:  https://api.meetup.com/sessions
+    api_rate_limit: 2
     radius: 5
     name_filter: True
     member_filter: True
@@ -99,6 +100,8 @@ email - the email registered with Meetup.com account
 password - the password for your Meetup.com account
 
 redirect_uri - the Redirect URI that you registered for your Oauth Consumer
+
+api_rate_limit - number of seconds to wait between API queries
 
 radius - radius around the search cities
 
