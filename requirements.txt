@@ -2,3 +2,6 @@ requests
 prettytable
 pyyaml
 xlsxwriter
+geocoder
+python-dateutil
+pytz
