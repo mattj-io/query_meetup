@@ -33,7 +33,11 @@ We recommend adding these dependencies by installing virtualenv:
 
 ## Authentication
 
-Meetup.com uses Oauth2 for authentication and authorization, in order to use this script you'll need to have set up an Oauth Consumer on your Meetup.com account. Once that is set up, you'll need to add the Key, Secret and Redirect URI into the configuration file, along with your Meetup.com email and password. The Redirect URI isn't actually used for anything, but is required as part of the Oauth process.
+Meetup.com uses Oauth2 for authentication and authorization, in order to use this script you'll need to have set up an Oauth Consumer on your Meetup.com account at https://secure.meetup.com/meetup_api/oauth_consumers/create
+
+This is basically a form telling Meetup what you want to do with the API - they require a website that your application uses ( in our case we give them the Github URL for this code ), and a redirect URI. For the purposes of this script, the redirect URI isn't actually used for anything, but is required as part of the Oauth process - again in our case this is set to the URL of the Github repo. 
+
+Once that is set up, you'll need to add the Key, Secret and Redirect URI into the configuration file, along with your Meetup.com email and password. 
 
 ## Additional Requirements
 
