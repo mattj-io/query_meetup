@@ -10,12 +10,12 @@ import sys
 import datetime
 from collections import OrderedDict
 import requests
+from dateutil.parser import parse
+import pytz
 import yaml
 import xlsxwriter
 import geocoder
 from prettytable import PrettyTable
-from dateutil.parser import parse
-import pytz
 
 def de_dupe(groups):
     """
@@ -454,6 +454,7 @@ def main():
         if meetup_query.debug:
             print group
         groups.append(group)
+        time.sleep(meetup_query.api_rate_limit)
     print "Deduplicating results"
     groups = de_dupe(groups)
     print "Applying filters"
