@@ -31,7 +31,11 @@ We recommend adding these dependencies by installing virtualenv:
 1. `source venv/bin/activate`
 1. `pip install -r requirements.txt`
 
+## Authentication
+
 Meetup.com uses Oauth2 for authentication and authorization, in order to use this script you'll need to have set up an Oauth Consumer on your Meetup.com account. Once that is set up, you'll need to add the Key, Secret and Redirect URI into the configuration file, along with your Meetup.com email and password. The Redirect URI isn't actually used for anything, but is required as part of the Oauth process.
+
+## Additional Requirements
 
 The GraphQL API requires latitudes and longitudes as opposed to city names, so this is implemented using Geocoder. Currently only the Geonames provider is supported, but adding support for others would be trivial. To use the current code, you need to register at http://www.geonames.org/ and turn on the free webservices at http://www.geonames.org/manageaccount
 
