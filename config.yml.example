@@ -4,10 +4,11 @@ meetup:
     email: YOUR_MEETUP_EMAIL
     password: YOUR_MEETUP_PASSWORD
     redirect_uri: YOUR_REDIRECT_URI
-    base_api_url: https://api.meetup.com
+    base_api_url: https://api.meetup.com/gql
     auth_url: https://secure.meetup.com/oauth2/authorize
     access_url: https://secure.meetup.com/oauth2/access
     oauth_url:  https://api.meetup.com/sessions
+    geonames_user: YOURGEONAMES_USER
     api_rate_limit: 2
     radius: 25
     name_filter: True
@@ -21,24 +22,12 @@ meetup:
     min_events: 4
     min_freq: 60
     search_keys:
-        - openstack
-        - mesos
         - docker
-        - data science
         - kubernetes
-        - flink
-        - spark
         - microservices
         - cloud native
-        - big data
-        - cassandra
-        - kafka
-        - scala
-        - hadoop
-        - coreos
-        - software circus
-        - data engineering
         - devops
+    debug: False
 locations:
     UK:
         - Manchester
