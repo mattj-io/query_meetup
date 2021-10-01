@@ -13,7 +13,7 @@ requests
 prettytable
 pyyaml
 xlsxwriter
-geopy
+geocoder
 python-datutil
 pytz
 ```
