@@ -6,7 +6,7 @@ If you need to find all the Java meetups with more than 100 members in Paris, or
 
 Feature and pull requests welcome !
 
-To use the Meetup API you need a Pro account and request access. 
+To use the Meetup API you need a Pro account unfortunately. 
 
 ## Requirements:
 
