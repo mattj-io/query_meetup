@@ -28,7 +28,7 @@ We recommend adding these dependencies by installing virtualenv:
 1. `pip install virtualenv`
 1. `mkdir venv`
 1. `virtualenv venv`
-1. `source venv/bin/activate
+1. `source venv/bin/activate`
 1. `pip install -r requirements.txt`
 
 Meetup.com uses Oauth2 for authentication and authorization, in order to use this script you'll need to have set up an Oauth Consumer on your Meetup.com account. Once that is set up, you'll need to add the Key, Secret and Redirect URI into the configuration file, along with your Meetup.com email and password. The Redirect URI isn't actually used for anything, but is required as part of the Oauth process.
