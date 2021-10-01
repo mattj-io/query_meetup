@@ -1,6 +1,6 @@
 # Query tool for Meetup.com
 
-This tool was designed for the needs of Dev Rel teams looking for specific community groups to speak at all over the world. It queries the Meetup.com GraphQL API on a set of locations with multiple keyword search terms and optional filters on the results.
+This tool was designed for the needs of Dev Rel teams looking for specific community groups to speak at all over the world. It queries the Meetup.com GraphQL API for a configurable set of locations with multiple keyword search terms and optional filters on the results.
 
 To use the Meetup API you need a Pro account and request access. 
 
