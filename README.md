@@ -22,7 +22,8 @@ python-datutil
 pytz
 ```
 
-You can also add these dependancies by installing virtualenv:
+We recommend adding these dependencies by installing virtualenv:
+
 1. `pip install virtualenv`
 1. `mkdir venv`
 1. `virtualenv venv`
