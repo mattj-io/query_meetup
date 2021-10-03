@@ -1,6 +1,6 @@
 # Query tool for Meetup.com
 
-This tool was designed for the needs of Dev Rel teams looking for specific community groups to speak at all over the world. It queries the Meetup.com GraphQL API for a configurable set of locations with multiple keyword search terms and optional filters on the results.
+This tool was designed for the needs of Dev Rel teams looking for specific community groups to speak at all over the world. It queries the Meetup.com GraphQL API for a configurable set of locations with multiple keyword search terms and optional filters on the results, which can be presented as a table or a spreadsheet. 
 
 If you need to find all the Java meetups with more than 100 members in Paris, or you want to find all the Cloud Native meetups in a bunch of cities in the US then you've found the right place.
 
