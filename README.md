@@ -41,7 +41,7 @@ Once that is set up, you'll need to add the Key, Secret and Redirect URI into th
 
 ## Additional Requirements
 
-The GraphQL API requires latitudes and longitudes as opposed to city names, so this is implemented using Geocoder. Currently only the Geonames provider is supported, but adding support for others would be trivial. To use the current code, you need to register at http://www.geonames.org/ and turn on the free webservices at http://www.geonames.org/manageaccount
+The GraphQL API requires latitudes and longitudes as opposed to city names, so this conversion is implemented using Geocoder. Currently only the Geonames provider is supported, but adding support for others would be trivial. To use the current code, you need to register at http://www.geonames.org/ and turn on the free webservices at http://www.geonames.org/manageaccount
 
 ### Configuration
 
