@@ -198,18 +198,10 @@ class MSMeetup(object):
         except requests.exceptions.RequestException as error:
             raise SystemExit(error)
         access_token = access_response.json()["access_token"]
-        # Request oauth token
-        access_token_string = 'Bearer %s' % access_token
-        headers['Authorization'] = access_token_string
-        oauth_params = {'email': self.email, 'password': self.password}
-        try:
-            oauth_response = requests.post(self.oauth_url, params=oauth_params, headers=headers)
-        except requests.exceptions.RequestException as error:
-            raise SystemExit(error)
-        print "Successfully authenticated against Meetup.com"
-        auth_string = 'Bearer %s' % oauth_response.json()["oauth_token"]
+        auth_string = 'Bearer %s' % access_token
         oauth_headers = {'Accept': 'application/json', 'Authorization': auth_string}
         self.oauth_headers = oauth_headers
+
 
     def get_lat_lon(self, city, country):
         """
