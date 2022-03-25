@@ -13,9 +13,12 @@ import requests
 from dateutil.parser import parse
 import pytz
 import yaml
+import pickle
 import xlsxwriter
 import geocoder
 from prettytable import PrettyTable
+
+DATASTORE = 'query_meetup.data'
 
 def de_dupe(groups):
     """
@@ -278,7 +281,7 @@ class MSMeetup(object):
         """
         query = """query {
             group(id: %s) {
-                unifiedEvents {
+                pastEvents(input: {}) {
                     count
                     pageInfo {
                         endCursor
@@ -292,7 +295,7 @@ class MSMeetup(object):
             }
           }""" % (group_id)
         res = self.graphql_query(query)
-        return res['data']['group']['unifiedEvents']['count']
+        return res['data']['group']['pastEvents']['count']
 
     def get_members(self, group_id):
         """
@@ -323,7 +326,7 @@ class MSMeetup(object):
         """
         query = """query {
             group(id: %s) {
-                unifiedEvents {
+                pastEvents(input: {}) {
                     count
                     pageInfo {
                         endCursor
@@ -339,7 +342,7 @@ class MSMeetup(object):
         res = self.graphql_query(query)
         datetime_strings = [x for y in [item['node'].values()
                                         for item in
-                                        res['data']['group']['unifiedEvents']['edges']]
+                                        res['data']['group']['pastEvents']['edges']]
                             for x in y]
         # These are unicode strings so convert them to datetimes
         datetimes = []
@@ -430,7 +433,13 @@ def main():
                            ('URL', 'link')])
 
     res = []
-    groups = []
+
+    if os.path.isfile(DATASTORE):
+        print("Found datastore on disk")
+        groups = pickle.load(open(DATASTORE, "rb"))
+    else:
+        groups = []
+
     # Get Oauth token
     meetup_query.get_oauth_token()
     # Search for groups
@@ -441,34 +450,61 @@ def main():
             print "No results for City: %s, Country: %s" % (city, country)
         time.sleep(meetup_query.api_rate_limit)
     for group_id in res:
-        print "Populating group data for id %s" % group_id
-        group = meetup_query.get_group(group_id)
-        if meetup_query.debug:
-            print group
-        groups.append(group)
-        time.sleep(meetup_query.api_rate_limit)
+        if len(groups) and next((group for group in groups if group["id"] == group_id), None):
+            print("Found group {} in datastore".format(
+                            [group['name'] for group in groups if group["id"] == group_id][0]))
+        else:
+            print "Populating group data for id %s" % group_id
+            group = meetup_query.get_group(group_id)
+            if meetup_query.debug:
+                print group
+            groups.append(group)
+            pickle.dump(groups, open(DATASTORE, "wb"))
+            time.sleep(meetup_query.api_rate_limit)
+
+    groups = [ group for group in groups if group['id'] in res ]
+
     print "Deduplicating results"
     groups = de_dupe(groups)
+    if meetup_query.debug:
+        table = create_table(columns, groups)
+        print table
+
     print "Applying filters"
     if meetup_query.filters['name_filter'][0]:
         print "Applying name filter"
         groups = meetup_query.filter_on_name(groups)
+        if meetup_query.debug:
+            table = create_table(columns, groups)
+            print table
     if meetup_query.filters['member_filter'][0]:
         print "Applying member filter"
         groups = meetup_query.filter_on_members(groups)
+        if meetup_query.debug:
+            table = create_table(columns, groups)
+            print table
     if meetup_query.filters['event_filter'][0]:
         print "Applying event filter"
         groups = meetup_query.filter_on_events(groups)
         columns['Total Events'] = 'number_events'
+        if meetup_query.debug:
+            table = create_table(columns, groups)
+            print table
     if meetup_query.filters['period_filter'][0]:
         print "Applying period filter"
         groups = meetup_query.filter_on_period(groups)
         columns['Events in Period'] = 'number_in_period'
         columns['Period (months)'] = 'period'
+        if meetup_query.debug:
+            table = create_table(columns, groups)
+            print table
     if meetup_query.filters['freq_filter'][0]:
         print "Applying frequency filter"
         groups = meetup_query.filter_on_freq(groups)
         columns['Frequency (days)'] = 'event_freq'
+        if meetup_query.debug:
+            table = create_table(columns, groups)
+            print table
     print "Creating output"
     if 'xlsx' in meetup_query.outputs:
         create_spreadsheet(meetup_query.sheet_name, columns, groups)
