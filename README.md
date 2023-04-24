@@ -45,10 +45,10 @@ The GraphQL API requires latitudes and longitudes as opposed to city names, so t
 
 ### Configuration
 
-The script takes a single argument --config which requires a path to your yaml config file as described below. An example YAML file is included
+The included script takes a single argument --config which requires a path to your yaml config file as described below. An example YAML file is included
 
 ```
-query_meetup.py --config matt_test.yml
+group_search.py --config matt_test.yml
 ```
 
 ### Config file syntax
