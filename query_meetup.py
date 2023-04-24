@@ -3,13 +3,9 @@
 Query meetup.com API
 """
 
-import os
 import time
-import argparse
 import sys
 import datetime
-from collections import OrderedDict
-import pickle
 import requests
 from dateutil.parser import parse
 import pytz
@@ -17,8 +13,6 @@ import yaml
 import xlsxwriter
 import geocoder
 from prettytable import PrettyTable
-
-DATASTORE = 'query_meetup.data'
 
 def de_dupe(groups):
     """
@@ -120,21 +114,20 @@ def create_table(columns, groups):
         table.add_row(row)
     return table
 
-class MSMeetup(object):
+class MSMeetup:
     """
     Define class object and load config
     """
     def __init__(self, configfile):
-        with open(configfile, 'r') as ymlfile:
+        with open(configfile, 'r', encoding='utf-8') as ymlfile:
             try:
                 cfg = yaml.safe_load(ymlfile)
             except yaml.YAMLError as exc:
                 print("Error parsing configuration file")
                 if hasattr(exc, 'problem_mark'):
                     mark = exc.problem_mark # pylint: disable=no-member
-                    print("Config file does not seem to be correct YAML - \
-                            error at line %s, column %s" \
-                            % (mark.line, mark.column))
+                    print(f"Config file does not seem to be correct YAML - \
+                            error at line {mark.line}, column {mark.column}")
                 sys.exit(1)
         if "meetup" not in cfg:
             print("Invalid configuration file")
@@ -186,9 +179,12 @@ class MSMeetup(object):
                        'redirect_uri': self.redirect_uri}
         print("Attempting to authenticate against Meetup.com")
         try:
-            auth_response = requests.get(self.auth_url, params=auth_params, headers=headers)
+            auth_response = requests.get(self.auth_url,
+                                         params=auth_params,
+                                         headers=headers,
+                                         timeout=30)
         except requests.exceptions.RequestException as error:
-            raise SystemExit(error)
+            raise SystemExit(error) from error
         auth_token = auth_response.json()["code"]
         # Request access token
         access_params = {'client_id': self.client_id,
@@ -197,11 +193,14 @@ class MSMeetup(object):
                          'redirect_uri': self.redirect_uri,
                          'code': auth_token}
         try:
-            access_response = requests.post(self.access_url, params=access_params, headers=headers)
+            access_response = requests.post(self.access_url,
+                                            params=access_params,
+                                            headers=headers,
+                                            timeout=30)
         except requests.exceptions.RequestException as error:
-            raise SystemExit(error)
+            raise SystemExit(error) from error
         access_token = access_response.json()["access_token"]
-        auth_string = 'Bearer %s' % access_token
+        auth_string = f'Bearer {access_token}'
         oauth_headers = {'Accept': 'application/json', 'Authorization': auth_string}
         self.oauth_headers = oauth_headers
 
@@ -214,17 +213,20 @@ class MSMeetup(object):
             geodata = geocoder.geonames(city, country=country, key=self.geonames_user)
         except requests.exceptions.RequestException as error:
             print("Could not connect to geocoding API - exiting")
-            raise SystemExit(error)
+            raise SystemExit(error) from error
         if geodata.ok:
             return geodata.lat, geodata.lng
-        print("No Geocode results found for %s %s" % (city, country))
+        print(f"No Geocode results found for {city} {country}")
         return False, False
 
     def graphql_query(self, query):
         """
         Query the GraphQL API
         """
-        res = requests.post(self.base_api_url, json={'query': query}, headers=self.oauth_headers)
+        res = requests.post(self.base_api_url,
+                            json={'query': query},
+                            headers=self.oauth_headers,
+                            timeout=30)
         return res.json()
 
     def search_for_groups(self, city, country):
@@ -362,6 +364,15 @@ class MSMeetup(object):
                                for key in self.search_keys)]
         return name_matches
 
+    def check_name_filter(self, group):
+        """
+        Check a group against the search keys
+        """
+        for key in self.search_keys:
+            if key.lower() in group["name"].lower():
+                return True
+        return False
+
     def filter_on_members(self, groups):
         """
         Return a filtered set of groups based on number of members
@@ -407,111 +418,3 @@ class MSMeetup(object):
                              if group["event_freq"]
                              < self.filters['freq_filter'][1]]
         return event_freq_filter
-
-def main():
-    """
-    Main execution
-    """
-
-    parser = argparse.ArgumentParser(description='Query Meetup.com')
-    parser.add_argument('--config',
-                        action="store",
-                        dest="config",
-                        help='configuration file to use',
-                        required=True)
-    args = parser.parse_args()
-
-    if not os.path.isfile(args.config):
-        print("Could not find config file %s" % args.config)
-        sys.exit(1)
-
-    meetup_query = MSMeetup(args.config)
-    columns = OrderedDict([('Name', 'name'),
-                           ('Members', 'members'),
-                           ('City', 'city'),
-                           ('Country', 'country'),
-                           ('URL', 'link')])
-
-    res = []
-
-    if os.path.isfile(DATASTORE):
-        print("Found datastore on disk")
-        groups = pickle.load(open(DATASTORE, "rb"))
-    else:
-        groups = []
-
-    # Get Oauth token
-    meetup_query.get_oauth_token()
-    # Search for groups
-    for city, country in meetup_query.locations.items():
-        print("Searching for groups in City: %s Country: %s" % (city, country))
-        res += meetup_query.search_for_groups(city, country)
-        if not res:
-            print("No results for City: %s, Country: %s" % (city, country))
-        time.sleep(meetup_query.api_rate_limit)
-    for group_id in res:
-        if groups and next((group for group in groups if group["id"] == group_id), None):
-            print("Found group {} in datastore".format(
-                            [group['name'] for group in groups if group["id"] == group_id][0]))
-        else:
-            print("Populating group data for {}".format(group_id))
-            group = meetup_query.get_group(group_id)
-            if meetup_query.debug:
-                print(group)
-            groups.append(group)
-            pickle.dump(groups, open(DATASTORE, "wb"))
-            time.sleep(meetup_query.api_rate_limit)
-
-    groups = [group for group in groups if group['id'] in res]
-
-    print("Applying filters")
-    
-    print ("Deduplicating results")
-    groups = de_dupe(groups)
-    if meetup_query.debug:
-        table = create_table(columns, groups)
-        print(table)
-    
-    if meetup_query.filters['name_filter'][0]:
-        print ("Applying name filter")
-        groups = meetup_query.filter_on_name(groups)
-        if meetup_query.debug:
-            table = create_table(columns, groups)
-            print(table)
-    if meetup_query.filters['member_filter'][0]:
-        print ("Applying member filter")
-        groups = meetup_query.filter_on_members(groups)
-        if meetup_query.debug:
-            table = create_table(columns, groups)
-            print(table)
-    if meetup_query.filters['event_filter'][0]:
-        print ("Applying event filter")
-        groups = meetup_query.filter_on_events(groups)
-        columns['Total Events'] = 'number_events'
-        if meetup_query.debug:
-            table = create_table(columns, groups)
-            print(table)
-    if meetup_query.filters['period_filter'][0]:
-        print ("Applying period filter")
-        groups = meetup_query.filter_on_period(groups)
-        columns['Events in Period'] = 'number_in_period'
-        columns['Period (months)'] = 'period'
-        if meetup_query.debug:
-            table = create_table(columns, groups)
-            print(table)
-    if meetup_query.filters['freq_filter'][0]:
-        print ("Applying frequency filter")
-        groups = meetup_query.filter_on_freq(groups)
-        columns['Frequency (days)'] = 'event_freq'
-        if meetup_query.debug:
-            table = create_table(columns, groups)
-            print(table)
-    print ("Creating output")
-    if 'xlsx' in meetup_query.outputs:
-        create_spreadsheet(meetup_query.sheet_name, columns, groups)
-    if 'table' in meetup_query.outputs:
-        table = create_table(columns, groups)
-        print(table)
-
-if __name__ == "__main__":
-    main()
