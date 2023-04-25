@@ -138,35 +138,19 @@ class MSMeetup:
         self.access_url = cfg['meetup']['access_url']
         self.email = cfg['meetup']['email']
         self.password = cfg['meetup']['password']
-        self.geonames_user = cfg['meetup']['geonames_user']
         self.oauth_url = cfg['meetup']['oauth_url']
         self.base_api_url = cfg['meetup']['base_api_url']
         self.redirect_uri = cfg['meetup']['redirect_uri']
-        self.api_rate_limit = cfg['meetup']['api_rate_limit']
-        self.radius = cfg['meetup']['radius']
-        self.search_keys = cfg['meetup']['search_keys']
-        self.filters = {}
-        self.filters['name_filter'] = [cfg['meetup']['name_filter']]
-        self.filters['member_filter'] = [cfg['meetup']['member_filter'],
-                                         cfg['meetup']['min_members']]
-        self.filters['event_filter'] = [cfg['meetup']['event_filter'],
-                                        cfg['meetup']['min_events']]
-        self.filters['freq_filter'] = [cfg['meetup']['freq_filter'],
-                                       cfg['meetup']['min_freq']]
-        self.filters['period_filter'] = [cfg['meetup']['period_filter'],
-                                         cfg['meetup']['period'],
-                                         cfg['meetup']['period_min']]
         self.debug = cfg['meetup']['debug']
-        self.outputs = []
-        for output in cfg['output']['types']:
-            self.outputs.append(output)
-        if 'xlsx' in self.outputs:
-            self.sheet_name = cfg['output']['sheet_name']
-        self.locations = {}
-        # Horrible nested for loop to load dict of city, country
-        for country in cfg['locations']:
-            for location in cfg['locations'][country]:
-                self.locations[location] = country
+        
+        if cfg['meetup']['oauth_type'] == 'anon':
+            oauth_headers = self.get_oauth_token()
+        elif cfg['meetup']['oauth_type'] == 'jwt':
+            oauth_headers = self.auth_jwt()
+        else:
+            print("Unsupported auth type")
+            sys.exit(1)
+        self.oauth_headers = oauth_headers
 
     def get_oauth_token(self):
         """
@@ -202,7 +186,7 @@ class MSMeetup:
         access_token = access_response.json()["access_token"]
         auth_string = f'bearer {access_token}'
         oauth_headers = {'Accept': 'application/json', 'Authorization': auth_string}
-        self.oauth_headers = oauth_headers
+        return oauth_headers
 
     def auth_jwt(self, jwt):
         """
@@ -222,21 +206,7 @@ class MSMeetup:
         access_token = access_response.json()["access_token"]
         auth_string = f'bearer {access_token}'
         oauth_headers = {'Accept': 'application/json', 'Authorization': auth_string}
-        self.oauth_headers = oauth_headers
-
-    def get_lat_lon(self, city, country):
-        """
-        Get a city's lat and lon using Geonames
-        """
-        try:
-            geodata = geocoder.geonames(city, country=country, key=self.geonames_user)
-        except requests.exceptions.RequestException as error:
-            print("Could not connect to geocoding API - exiting")
-            raise SystemExit(error) from error
-        if geodata.ok:
-            return geodata.lat, geodata.lng
-        print(f"No Geocode results found for {city} {country}")
-        return False, False
+        return oauth_headers
 
     def graphql_query(self, query, variables):
         """
@@ -248,13 +218,17 @@ class MSMeetup:
                             timeout=30)
         return res.json()
 
-    def search_for_groups(self, city, country):
+    def search_for_groups(self,
+                          geonames_user,
+                          city,
+                          country,
+                          radius,
+                          search_string):
         """
         Search for groups
         """
-        lat, lon = self.get_lat_lon(city, country)
+        lat, lon = get_lat_lon(geonames_user, city, country)
         if all([lat, lon]):
-            search_string = ' OR '.join(self.search_keys)
             query = """query ($search_string: String!, $lat: Float!, $lon: Float!, $radius: Int!) {
                 keywordSearch(filter: { query: $search_string, lat: $lat, lon: $lon, radius: $radius, source: GROUPS }) {
                     count
@@ -271,7 +245,7 @@ class MSMeetup:
             variables = f'{{"search_string": "{search_string}",\
                     "lat": {lat},\
                     "lon": {lon},\
-                    "radius": {self.radius}}}'
+                    "radius": {radius}}}'
             res = self.graphql_query(query, variables)
             ids = [x for y in [item['node'].values()
                                for item in res['data']['keywordSearch']['edges']]
@@ -431,67 +405,81 @@ class MSMeetup:
             datetimes.append(date_time)
         return datetimes
 
-    def filter_on_name(self, groups):
-        """
-        Return a filtered set of groups based on name matching
-        Meetup API search scope is full description not just name
-        """
-        name_matches = [group for group in groups
-                        if any(key.lower() in group["name"].lower()
-                               for key in self.search_keys)]
-        return name_matches
+def filter_on_name(search_keys, groups):
+    """
+    Return a filtered set of groups based on name matching
+    Meetup API search scope is full description not just name
+    """
+    name_matches = [group for group in groups
+                    if any(key.lower() in group["name"].lower()
+                           for key in search_keys)]
+    return name_matches
 
-    def check_name_filter(self, group):
-        """
-        Check a group against the search keys
-        """
-        for key in self.search_keys:
-            if key.lower() in group["name"].lower():
-                return True
-        return False
+def check_name_filter(search_keys, group):
+    """
+    Check a group against the search keys
+    """
+    for key in search_keys:
+        if key.lower() in group["name"].lower():
+            return True
+    return False
 
-    def filter_on_members(self, groups):
-        """
-        Return a filtered set of groups based on number of members
-        """
-        mem_filter = [group for group in groups
-                      if group["members"] > self.filters['member_filter'][1]]
-        return mem_filter
+def filter_on_members(filters, groups):
+    """
+    Return a filtered set of groups based on number of members
+    """
+    mem_filter = [group for group in groups
+                  if group["members"] > filters['member_filter'][1]]
+    return mem_filter
 
-    def filter_on_events(self, groups):
-        """
-        Return a filtered set of groups based on minimum number of events
-        """
-        for group in groups:
-            group["number_events"] = self.get_number_of_events(group['id'])
-            time.sleep(self.api_rate_limit)
-        num_event_filter = [group for group in groups
-                            if group["number_events"] > self.filters['event_filter'][1]]
-        return num_event_filter
+def filter_on_events(meetup, filters, groups, rate_limit):
+    """
+    Return a filtered set of groups based on minimum number of events
+    """
+    for group in groups:
+        group["number_events"] = meetup.get_number_of_events(group['id'])
+        time.sleep(rate_limit)
+    num_event_filter = [group for group in groups
+                        if group["number_events"] > filters['event_filter'][1]]
+    return num_event_filter
 
-    def filter_on_period(self, groups):
-        """
-        Return a filtered set of groups based on events in past configurable period
-        """
-        for group in groups:
-            group["number_in_period"] = number_in_period(self.get_event_datetimes(group['id']),
-                                                         self.filters['period_filter'][1])
-            group["period"] = self.filters['period_filter'][1]
-            time.sleep(self.api_rate_limit)
-        period_event_filter = [group for group in groups
-                               if group["number_in_period"]
-                               > self.filters['period_filter'][2]]
-        return period_event_filter
+def filter_on_period(meetup, filters, groups, rate_limit):
+    """
+    Return a filtered set of groups based on events in past configurable period
+    """
+    for group in groups:
+        group["number_in_period"] = number_in_period(meetup.get_event_datetimes(group['id']),
+                                                     filters['period_filter'][1])
+        group["period"] = filters['period_filter'][1]
+        time.sleep(rate_limit)
+    period_event_filter = [group for group in groups
+                           if group["number_in_period"]
+                           > filters['period_filter'][2]]
+    return period_event_filter
 
-    def filter_on_freq(self, groups):
-        """
-        Return a filtered set based on a configurable past event frequency
-        """
-        for group in groups:
-            datetimes = self.get_event_datetimes(group['id'])
-            group["event_freq"] = event_frequency(datetimes)
-            time.sleep(self.api_rate_limit)
-        event_freq_filter = [group for group in groups
-                             if group["event_freq"]
-                             < self.filters['freq_filter'][1]]
-        return event_freq_filter
+def filter_on_freq(meetup, filters, groups, rate_limit):
+    """
+    Return a filtered set based on a configurable past event frequency
+    """
+    for group in groups:
+        datetimes = meetup.get_event_datetimes(group['id'])
+        group["event_freq"] = event_frequency(datetimes)
+        time.sleep(rate_limit)
+    event_freq_filter = [group for group in groups
+                         if group["event_freq"]
+                         < filters['freq_filter'][1]]
+    return event_freq_filter
+
+def get_lat_lon(geonames_user, city, country):
+    """
+    Get a city's lat and lon using Geonames
+    """
+    try:
+        geodata = geocoder.geonames(city, country=country, key=geonames_user)
+    except requests.exceptions.RequestException as error:
+        print("Could not connect to geocoding API - exiting")
+        raise SystemExit(error) from error
+    if geodata.ok:
+        return geodata.lat, geodata.lng
+    print(f"No Geocode results found for {city} {country}")
+    return False, False
