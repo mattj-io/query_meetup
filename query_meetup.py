@@ -142,7 +142,7 @@ class MSMeetup:
         self.base_api_url = cfg['meetup']['base_api_url']
         self.redirect_uri = cfg['meetup']['redirect_uri']
         self.debug = cfg['meetup']['debug']
-        
+
         if cfg['meetup']['oauth_type'] == 'anon':
             oauth_headers = self.get_oauth_token()
         elif cfg['meetup']['oauth_type'] == 'jwt':
