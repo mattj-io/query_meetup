@@ -200,10 +200,29 @@ class MSMeetup:
         except requests.exceptions.RequestException as error:
             raise SystemExit(error) from error
         access_token = access_response.json()["access_token"]
-        auth_string = f'Bearer {access_token}'
+        auth_string = f'bearer {access_token}'
         oauth_headers = {'Accept': 'application/json', 'Authorization': auth_string}
         self.oauth_headers = oauth_headers
 
+    def auth_jwt(self, jwt):
+        """
+        Get an Oauth token
+        """
+        headers = {'Accept': 'application/json'}
+        auth_params = {'grant_type': 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                       'assertion': jwt}
+        print("Attempting to authenticate against Meetup.com")
+        try:
+            access_response = requests.post(self.access_url,
+                                            params=auth_params,
+                                            headers=headers,
+                                            timeout=30)
+        except requests.exceptions.RequestException as error:
+            raise SystemExit(error) from error
+        access_token = access_response.json()["access_token"]
+        auth_string = f'bearer {access_token}'
+        oauth_headers = {'Accept': 'application/json', 'Authorization': auth_string}
+        self.oauth_headers = oauth_headers
 
     def get_lat_lon(self, city, country):
         """
@@ -219,12 +238,12 @@ class MSMeetup:
         print(f"No Geocode results found for {city} {country}")
         return False, False
 
-    def graphql_query(self, query):
+    def graphql_query(self, query, variables):
         """
         Query the GraphQL API
         """
         res = requests.post(self.base_api_url,
-                            json={'query': query},
+                            json={'query': query, 'variables': variables},
                             headers=self.oauth_headers,
                             timeout=30)
         return res.json()
@@ -236,8 +255,8 @@ class MSMeetup:
         lat, lon = self.get_lat_lon(city, country)
         if all([lat, lon]):
             search_string = ' OR '.join(self.search_keys)
-            query = """query {
-                keywordSearch(filter: { query: "%s", lat: %s, lon: %s, radius: %s, source: GROUPS }) {
+            query = """query ($search_string: String!, $lat: Float!, $lon: Float!, $radius: Int!) {
+                keywordSearch(filter: { query: $search_string, lat: $lat, lon: $lon, radius: $radius, source: GROUPS }) {
                     count
                     pageInfo {
                         endCursor
@@ -247,21 +266,26 @@ class MSMeetup:
                             id
                         }
                     }
-                }   
-            }""" % (search_string, lat, lon, self.radius)
-            res = self.graphql_query(query)
+                }
+            }"""
+            variables = f'{{"search_string": "{search_string}",\
+                    "lat": {lat},\
+                    "lon": {lon},\
+                    "radius": {self.radius}}}'
+            res = self.graphql_query(query, variables)
             ids = [x for y in [item['node'].values()
                                for item in res['data']['keywordSearch']['edges']]
                    for x in y]
             return ids
         return []
 
+
     def get_group(self, group_id):
         """
         Retrieve the group info
         """
-        query = """query {
-            group(id: %s) {
+        query = """query ($groupid: ID!) {
+            group(id: $groupid) {
                 name
                 link
                 city
@@ -270,8 +294,9 @@ class MSMeetup:
                     count 
                 }
              }
-          }""" % (group_id)
-        res = self.graphql_query(query)
+          }"""
+        variables = f'{{"groupid": "{group_id}"}}'
+        res = self.graphql_query(query, variables)
         res['data']['group']['id'] = group_id
         res['data']['group']['members'] = res['data']['group']['memberships']['count']
         del res['data']['group']['memberships']
@@ -281,8 +306,8 @@ class MSMeetup:
         """
         Retrieve the number of events for a group
         """
-        query = """query {
-            group(id: %s) {
+        query = """query ($groupid: ID!) {
+            group(id: $groupid) {
                 pastEvents(input: {}) {
                     count
                     pageInfo {
@@ -295,16 +320,66 @@ class MSMeetup:
                     }
                }
             }
-          }""" % (group_id)
-        res = self.graphql_query(query)
+          }"""
+        variables = f'{{"groupid": "{group_id}"}}'
+        res = self.graphql_query(query, variables)
         return res['data']['group']['pastEvents']['count']
+
+    def get_network_events(self, network_url):
+        """
+        Get events from a network
+        """
+        query = """query ($urlname: String!) {
+            proNetworkByUrlname(urlname: $urlname) {
+                eventsSearch(filter: { status: UPCOMING }, input: { first: 3 }) {
+                    count
+                    pageInfo {
+                        endCursor
+                    }
+                    edges {
+                        node {
+                            id
+                            title
+                            dateTime
+                        }
+                    }
+                }
+            }
+        }"""
+        variables = f'{{"urlname": "{network_url}"}}'
+        res = self.graphql_query(query, variables)
+        return res
+
+    def get_network_groups(self, network_url):
+        """
+        Get events from a network
+        """
+        query = """query ($urlname: String!) {
+            proNetworkByUrlname(urlname: $urlname) {
+                groupsSearch(input: { first: 3 }) {
+                    count
+                    pageInfo {
+                        endCursor
+                    }
+                    edges {
+                        node {
+                            id
+                            name
+                        }
+                    }
+                }
+            }
+        }"""
+        variables = f'{{"urlname": "{network_url}"}}'
+        res = self.graphql_query(query, variables)
+        return res
 
     def get_members(self, group_id):
         """
         Retrieve the members of a group
         """
-        query = """query {
-            group(id: %s) {
+        query = """query ($groupid: ID!) {
+            group(id: $groupid) {
                 memberships {
                     count
                     pageInfo {
@@ -318,16 +393,17 @@ class MSMeetup:
                     }
                }
             }
-          }""" % (group_id)
-        res = self.graphql_query(query)
+          }"""
+        variables = f'{{"groupid": "{group_id}"}}'
+        res = self.graphql_query(query, variables)
         return res
 
     def get_event_datetimes(self, group_id):
         """
         Get a list of datetimes for events
         """
-        query = """query {
-            group(id: %s) {
+        query = """query ($groupid: ID!) {
+            group(id: $groupid) {
                 pastEvents(input: {}) {
                     count
                     pageInfo {
@@ -340,8 +416,9 @@ class MSMeetup:
                     }
                }
             }
-          }""" % (group_id)
-        res = self.graphql_query(query)
+          }"""
+        variables = f'{{"groupid": "{group_id}"}}'
+        res = self.graphql_query(query, variables)
         datetime_strings = [x for y in [item['node'].values()
                                         for item in
                                         res['data']['group']['pastEvents']['edges']]
