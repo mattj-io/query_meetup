@@ -144,13 +144,7 @@ class MSMeetup:
         self.debug = cfg['meetup']['debug']
 
         if cfg['meetup']['oauth_type'] == 'anon':
-            oauth_headers = self.get_oauth_token()
-        elif cfg['meetup']['oauth_type'] == 'jwt':
-            oauth_headers = self.auth_jwt()
-        else:
-            print("Unsupported auth type")
-            sys.exit(1)
-        self.oauth_headers = oauth_headers
+            self.oauth_headers = self.get_oauth_token()
 
     def get_oauth_token(self):
         """
@@ -206,7 +200,7 @@ class MSMeetup:
         access_token = access_response.json()["access_token"]
         auth_string = f'bearer {access_token}'
         oauth_headers = {'Accept': 'application/json', 'Authorization': auth_string}
-        return oauth_headers
+        self.oauth_headers = oauth_headers
 
     def graphql_query(self, query, variables):
         """
@@ -252,7 +246,6 @@ class MSMeetup:
                    for x in y]
             return ids
         return []
-
 
     def get_group(self, group_id):
         """
@@ -305,7 +298,7 @@ class MSMeetup:
         """
         query = """query ($urlname: String!) {
             proNetworkByUrlname(urlname: $urlname) {
-                eventsSearch(filter: { status: UPCOMING }, input: { first: 3 }) {
+                eventsSearch(filter: { status: UPCOMING }, input: { first: 5 }) {
                     count
                     pageInfo {
                         endCursor
@@ -314,7 +307,9 @@ class MSMeetup:
                         node {
                             id
                             title
+                            eventUrl
                             dateTime
+                            description
                         }
                     }
                 }
@@ -322,7 +317,7 @@ class MSMeetup:
         }"""
         variables = f'{{"urlname": "{network_url}"}}'
         res = self.graphql_query(query, variables)
-        return res
+        return res['data']['proNetworkByUrlname']['eventsSearch']['edges']
 
     def get_network_groups(self, network_url):
         """
