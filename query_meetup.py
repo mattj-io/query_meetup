@@ -17,6 +17,7 @@ from prettytable import PrettyTable
 BASE_API_URL = 'https://api.meetup.com/gql'
 ACCESS_URL = 'https://secure.meetup.com/oauth2/access'
 AUTH_URL = 'https://secure.meetup.com/oauth2/authorize'
+DEBUG = False
 
 def de_dupe(groups):
     """
@@ -140,7 +141,7 @@ class MSMeetup:
         self.client_secret = cfg['meetup']['client_secret']
         self.base_api_url = BASE_API_URL
         self.access_url = ACCESS_URL
-        self.debug = cfg['meetup']['debug']
+        self.debug = DEBUG
 
         if cfg['meetup']['oauth_type'] == 'anon':
             self.oauth_headers = self.get_oauth_token(cfg)
