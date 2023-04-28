@@ -133,20 +133,15 @@ class MSMeetup:
             print("Invalid configuration file")
             sys.exit(1)
         self.client_id = cfg['meetup']['client_id']
-        self.auth_url = cfg['meetup']['auth_url']
         self.client_secret = cfg['meetup']['client_secret']
-        self.access_url = cfg['meetup']['access_url']
-        self.email = cfg['meetup']['email']
-        self.password = cfg['meetup']['password']
-        self.oauth_url = cfg['meetup']['oauth_url']
         self.base_api_url = cfg['meetup']['base_api_url']
-        self.redirect_uri = cfg['meetup']['redirect_uri']
+        self.access_url = cfg['meetup']['access_url']
         self.debug = cfg['meetup']['debug']
 
         if cfg['meetup']['oauth_type'] == 'anon':
-            self.oauth_headers = self.get_oauth_token()
+            self.oauth_headers = self.get_oauth_token(cfg)
 
-    def get_oauth_token(self):
+    def get_oauth_token(self, cfg):
         """
         Get an Oauth token
         """
@@ -154,10 +149,10 @@ class MSMeetup:
         headers = {'Accept': 'application/json'}
         auth_params = {'client_id': self.client_id,
                        'response_type': grant_type,
-                       'redirect_uri': self.redirect_uri}
+                       'redirect_uri': cfg['meetup']['redirect_uri']}
         print("Attempting to authenticate against Meetup.com")
         try:
-            auth_response = requests.get(self.auth_url,
+            auth_response = requests.get(cfg['meetup']['auth_url'],
                                          params=auth_params,
                                          headers=headers,
                                          timeout=30)
@@ -168,7 +163,7 @@ class MSMeetup:
         access_params = {'client_id': self.client_id,
                          'client_secret': self.client_secret,
                          'grant_type': grant_type,
-                         'redirect_uri': self.redirect_uri,
+                         'redirect_uri': cfg['meetup']['redirect_uri'],
                          'code': auth_token}
         try:
             access_response = requests.post(self.access_url,
@@ -188,7 +183,7 @@ class MSMeetup:
         """
         headers = {'Accept': 'application/json'}
         print("Attempting to refresh Meetup token")
-        refresh_params = {'client_id':self.client_id,
+        refresh_params = {'client_id': self.client_id,
                           'client_secret':self.client_secret,
                           'grant_type':'refresh_token',
                           'refresh_token':refresh_token}
