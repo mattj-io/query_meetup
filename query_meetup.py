@@ -14,6 +14,10 @@ import xlsxwriter
 import geocoder
 from prettytable import PrettyTable
 
+BASE_API_URL = 'https://api.meetup.com/gql'
+ACCESS_URL = 'https://secure.meetup.com/oauth2/access'
+AUTH_URL = 'https://secure.meetup.com/oauth2/authorize'
+
 def de_dupe(groups):
     """
     De-duplicate a set of groups
@@ -134,8 +138,8 @@ class MSMeetup:
             sys.exit(1)
         self.client_id = cfg['meetup']['client_id']
         self.client_secret = cfg['meetup']['client_secret']
-        self.base_api_url = cfg['meetup']['base_api_url']
-        self.access_url = cfg['meetup']['access_url']
+        self.base_api_url = BASE_API_URL
+        self.access_url = ACCESS_URL
         self.debug = cfg['meetup']['debug']
 
         if cfg['meetup']['oauth_type'] == 'anon':
