@@ -182,6 +182,28 @@ class MSMeetup:
         oauth_headers = {'Accept': 'application/json', 'Authorization': auth_string}
         return oauth_headers
 
+    def refresh_token(self, refresh_token):
+        """
+        Refresh token
+        """
+        headers = {'Accept': 'application/json'}
+        print("Attempting to refresh Meetup token")
+        refresh_params = {'client_id':self.client_id,
+                          'client_secret':self.client_secret,
+                          'grant_type':'refresh_token',
+                          'refresh_token':refresh_token}
+        try:
+            access_response = requests.post(self.access_url,
+                                            params=refresh_params,
+                                            headers=headers,
+                                            timeout=30)
+        except requests.exceptions.RequestException as error:
+            raise SystemExit(error) from error
+        access_token = access_response.json()["access_token"]
+        auth_string = f'bearer {access_token}'
+        oauth_headers = {'Accept': 'application/json', 'Authorization': auth_string}
+        self.oauth_headers = oauth_headers
+
     def auth_jwt(self, jwt):
         """
         Get an Oauth token
