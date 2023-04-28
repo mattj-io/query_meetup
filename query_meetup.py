@@ -143,7 +143,7 @@ class MSMeetup:
         self.access_url = ACCESS_URL
         self.debug = DEBUG
 
-        if cfg['meetup']['oauth_type'] and cfg['meetup']['oauth_type'] == 'anon':
+        if 'oauth_type' in cfg['meetup'] and cfg['meetup']['oauth_type'] == 'anon':
             self.oauth_headers = self.get_oauth_token(cfg)
 
     def get_oauth_token(self, cfg):
