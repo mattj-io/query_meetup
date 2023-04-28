@@ -310,6 +310,7 @@ class MSMeetup:
                             eventUrl
                             dateTime
                             description
+                            timezone
                         }
                     }
                 }
