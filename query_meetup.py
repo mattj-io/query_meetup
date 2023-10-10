@@ -341,14 +341,15 @@ class MSMeetup:
         variables = f'{{"urlname": "{network_url}"}}'
         res = self.graphql_query(query, variables)
         return res['data']['proNetworkByUrlname']['eventsSearch']['edges']
+    
 
     def get_network_groups(self, network_url):
         """
-        Get events from a network
+        Get groups from a network
         """
         query = """query ($urlname: String!) {
             proNetworkByUrlname(urlname: $urlname) {
-                groupsSearch(input: { first: 3 }) {
+                groupsSearch(input: { first: 100 }) {
                     count
                     pageInfo {
                         endCursor
@@ -357,6 +358,12 @@ class MSMeetup:
                         node {
                             id
                             name
+                            groupAnalytics {
+                                totalMembers
+                                totalPastEvents
+                                totalPastRsvps
+                                averageRsvpsPerEvent
+                                }
                         }
                     }
                 }
@@ -364,8 +371,25 @@ class MSMeetup:
         }"""
         variables = f'{{"urlname": "{network_url}"}}'
         res = self.graphql_query(query, variables)
-        return res
+        return res['data']['proNetworkByUrlname']['groupsSearch']['edges']
 
+    def get_network(self, network_url):
+        """
+        Get a network
+        """
+        query = """query ($urlname: String!) {
+            proNetworkByUrlname(urlname: $urlname) {
+                           id
+                           name
+                           networkAnalytics{
+                            totalMembers
+                           }
+            }
+        }"""
+        variables = f'{{"urlname": "{network_url}"}}'
+        res = self.graphql_query(query, variables)
+        return res['data']['proNetworkByUrlname']
+    
     def get_members(self, group_id):
         """
         Retrieve the members of a group
