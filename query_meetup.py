@@ -12,6 +12,7 @@ import pytz
 import yaml
 import xlsxwriter
 import geocoder
+import os
 from prettytable import PrettyTable
 
 BASE_API_URL = 'https://api.meetup.com/gql'
@@ -124,27 +125,36 @@ class MSMeetup:
     Define class object and load config
     """
     def __init__(self, configfile):
-        with open(configfile, 'r', encoding='utf-8') as ymlfile:
-            try:
-                cfg = yaml.safe_load(ymlfile)
-            except yaml.YAMLError as exc:
-                print("Error parsing configuration file")
-                if hasattr(exc, 'problem_mark'):
-                    mark = exc.problem_mark # pylint: disable=no-member
-                    print(f"Config file does not seem to be correct YAML - \
-                            error at line {mark.line}, column {mark.column}")
-                sys.exit(1)
-        if "meetup" not in cfg:
-            print("Invalid configuration file")
-            sys.exit(1)
-        self.client_id = cfg['meetup']['client_id']
-        self.client_secret = cfg['meetup']['client_secret']
+        env_vars = 'MEETUP_CLIENT_ID,MEETUP_CLIENT_SECRET'.split(',')
         self.base_api_url = BASE_API_URL
         self.access_url = ACCESS_URL
         self.debug = DEBUG
 
-        if 'oauth_type' in cfg['meetup'] and cfg['meetup']['oauth_type'] == 'anon':
-            self.oauth_headers = self.get_oauth_token(cfg)
+        if configfile is None:
+            for evar in env_vars:
+                if evar not in os.environ:
+                    raise ValueError('Environment variable "%s" was not set' % evar)
+                    sys.exit(1)
+            self.client_id = os.environ['MEETUP_CLIENT_ID']
+            self.client_secret = os.environ['MEETUP_CLIENT_SECRET']
+        else:
+            with open(configfile, 'r', encoding='utf-8') as ymlfile:
+                try:
+                    cfg = yaml.safe_load(ymlfile)
+                except yaml.YAMLError as exc:
+                    print("Error parsing configuration file")
+                    if hasattr(exc, 'problem_mark'):
+                        mark = exc.problem_mark # pylint: disable=no-member
+                        print(f"Config file does not seem to be correct YAML - \
+                                error at line {mark.line}, column {mark.column}")
+                    sys.exit(1)
+            if "meetup" not in cfg:
+                print("Invalid configuration file")
+                sys.exit(1)
+            self.client_id = cfg['meetup']['client_id']
+            self.client_secret = cfg['meetup']['client_secret']
+            if 'oauth_type' in cfg['meetup'] and cfg['meetup']['oauth_type'] == 'anon':
+                self.oauth_headers = self.get_oauth_token(cfg)
 
     def get_oauth_token(self, cfg):
         """
