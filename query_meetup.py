@@ -324,13 +324,15 @@ class MSMeetup:
         res = self.graphql_query(query, variables)
         return res['data']['group']['pastEvents']['count']
 
-    def get_network_events(self, network_url):
+    def get_network_events(self,
+                           network_url,
+                           status):
         """
         Get events from a network
         """
-        query = """query ($urlname: String!) {
+        query = """query ($urlname: String!, $status: ProNetworkEventStatus) {
             proNetworkByUrlname(urlname: $urlname) {
-                eventsSearch(filter: { status: UPCOMING }, input: { first: 5 }) {
+                eventsSearch(filter: { status: $status }, input: { first: 100 }) {
                     count
                     pageInfo {
                         endCursor
@@ -343,12 +345,14 @@ class MSMeetup:
                             dateTime
                             description
                             timezone
+                            going
                         }
                     }
                 }
             }
         }"""
-        variables = f'{{"urlname": "{network_url}"}}'
+        variables = f'{{"urlname": "{network_url}",\
+                        "status": "{status}"}}'
         res = self.graphql_query(query, variables)
         return res['data']['proNetworkByUrlname']['eventsSearch']['edges']
     
