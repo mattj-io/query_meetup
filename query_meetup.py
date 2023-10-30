@@ -340,6 +340,9 @@ class MSMeetup:
                     edges {
                         node {
                             id
+                            group {
+                                id
+                            }
                             title
                             eventUrl
                             dateTime
@@ -372,6 +375,7 @@ class MSMeetup:
                         node {
                             id
                             name
+                            foundedDate
                             groupAnalytics {
                                 totalMembers
                                 totalPastEvents
