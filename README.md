@@ -63,7 +63,10 @@ meetup:
     base_api_url: https://api.meetup.com/gql
     auth_url: https://secure.meetup.com/oauth2/authorize
     access_url: https://secure.meetup.com/oauth2/access
-    oauth_url:  https://api.meetup.com/sessions
+    oauth_url: https://api.meetup.com/sessions
+    oauth_type: anon
+    debug: False
+groups:
     geonames_user: YOURGEONAMES_USER
     api_rate_limit: 2
     radius: 25
@@ -84,21 +87,22 @@ meetup:
         - cloud native
         - devops
     debug: False
-locations:
-    UK:
-        - Manchester
-        - Bristol
-        - London
-        - Birmingham
-    DE:
-        - Hamburg
-        - Berlin
-output:
-    types:
-         - table
-         - xlsx
-    sheet_name: test
+    locations:
+        UK:
+            - Manchester
+            - Bristol
+            - London
+            - Birmingham
+        DE:
+            - Hamburg
+            - Berlin
+    output:
+        types:
+             - table
+            - xlsx
+        sheet_name: test
 ```                
+Meetup section :
 
 client_id - the key for your Oauth Consumer
 
@@ -109,6 +113,10 @@ email - the email registered with Meetup.com account
 password - the password for your Meetup.com account
 
 redirect_uri - the Redirect URI that you registered for your Oauth Consumer
+
+debug - output more detailed debugging info
+
+Groups section :
 
 geonames_user - the username to use for Geonames queries
 
@@ -138,7 +146,7 @@ min_period - the minimum number of events that should have occurred within the d
 
 search_keys - list of search keys to use to search for groups. These are currently concatenated with OR for the purposes of the query.
 
-debug - output more detailed debugging info
+
 
 locations - the locations to query. NOTE that if you are querying groups in Norway, you need to quote the country code ( 'NO' ) as NO is interpreted as False in YAML :)
 
